@@ -66,6 +66,8 @@ func (p *Protocol) sendPermissionResponse(ctx context.Context, requestID string,
 		responseData = map[string]any{"behavior": "allow"}
 		if r.UpdatedInput != nil {
 			responseData["updatedInput"] = r.UpdatedInput
+		} else {
+			responseData["updatedInput"] = map[string]any{}
 		}
 		if len(r.UpdatedPermissions) > 0 {
 			responseData["updatedPermissions"] = r.UpdatedPermissions

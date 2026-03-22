@@ -3137,11 +3137,41 @@ func TestPermissionResultConstructors(t *testing.T) {
 		if result.Behavior != "allow" {
 			t.Errorf("Expected behavior 'allow', got %q", result.Behavior)
 		}
-		if result.UpdatedInput != nil {
-			t.Error("Expected UpdatedInput to be nil by default")
+		if result.UpdatedInput == nil {
+			t.Error("Expected UpdatedInput to be non-nil empty map, got nil")
+		}
+		if len(result.UpdatedInput) != 0 {
+			t.Errorf("Expected UpdatedInput to be empty, got %v", result.UpdatedInput)
 		}
 		if len(result.UpdatedPermissions) != 0 {
 			t.Error("Expected UpdatedPermissions to be empty by default")
+		}
+	})
+
+	t.Run("NewPermissionResultAllowWithInput", func(t *testing.T) {
+		// With actual input
+		input := map[string]any{"file_path": "/tmp/test.txt", "content": "hello"}
+		result := NewPermissionResultAllowWithInput(input)
+		if result.Behavior != "allow" {
+			t.Errorf("Expected behavior 'allow', got %q", result.Behavior)
+		}
+		if result.UpdatedInput == nil {
+			t.Error("Expected UpdatedInput to be non-nil")
+		}
+		if result.UpdatedInput["file_path"] != "/tmp/test.txt" {
+			t.Errorf("Expected file_path='/tmp/test.txt', got %v", result.UpdatedInput["file_path"])
+		}
+		if result.UpdatedInput["content"] != "hello" {
+			t.Errorf("Expected content='hello', got %v", result.UpdatedInput["content"])
+		}
+
+		// With nil input — should default to empty map
+		resultNil := NewPermissionResultAllowWithInput(nil)
+		if resultNil.UpdatedInput == nil {
+			t.Error("Expected UpdatedInput to be non-nil empty map when nil input provided")
+		}
+		if len(resultNil.UpdatedInput) != 0 {
+			t.Errorf("Expected empty map for nil input, got %v", resultNil.UpdatedInput)
 		}
 	})
 

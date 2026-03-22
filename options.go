@@ -709,6 +709,10 @@ func WithFileCheckpointing() Option {
 //	return claudecode.NewPermissionResultAllow(), nil
 var NewPermissionResultAllow = control.NewPermissionResultAllow
 
+// NewPermissionResultAllowWithInput creates an Allow result that passes through the tool input.
+// This is the recommended constructor for permission callbacks.
+var NewPermissionResultAllowWithInput = control.NewPermissionResultAllowWithInput
+
 // NewPermissionResultDeny creates a Deny result with proper defaults.
 // Use this to deny tool execution with a reason message.
 //

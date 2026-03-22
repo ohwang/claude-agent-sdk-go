@@ -86,7 +86,7 @@ func runToolFilterExample() {
 	permissionCallback := claudecode.WithCanUseTool(func(
 		_ context.Context,
 		toolName string,
-		_ map[string]any,
+		input map[string]any,
 		_ claudecode.ToolPermissionContext,
 	) (claudecode.PermissionResult, error) {
 		// Log all permission requests
@@ -96,14 +96,14 @@ func runToolFilterExample() {
 		switch toolName {
 		case "Bash", "Write":
 			fmt.Printf("  [ALLOW] Tool: %s\n", toolName)
-			return claudecode.NewPermissionResultAllow(), nil
+			return claudecode.NewPermissionResultAllowWithInput(input), nil
 		case "Edit":
 			fmt.Printf("  [DENY]  Tool: %s - Edit not permitted in this example\n", toolName)
 			return claudecode.NewPermissionResultDeny("Edit operations are not allowed"), nil
 		default:
 			// Allow other tools (Read, Glob, etc. don't trigger callbacks)
 			fmt.Printf("  [ALLOW] Tool: %s\n", toolName)
-			return claudecode.NewPermissionResultAllow(), nil
+			return claudecode.NewPermissionResultAllowWithInput(input), nil
 		}
 	})
 
@@ -171,17 +171,17 @@ func runPathBasedExample() {
 			}
 
 			fmt.Printf("  [ALLOW] Write to allowed path: %s\n", filePath)
-			return claudecode.NewPermissionResultAllow(), nil
+			return claudecode.NewPermissionResultAllowWithInput(input), nil
 		}
 
 		// Allow Bash for verification
 		if toolName == "Bash" {
 			fmt.Printf("  [ALLOW] Bash command allowed\n")
-			return claudecode.NewPermissionResultAllow(), nil
+			return claudecode.NewPermissionResultAllowWithInput(input), nil
 		}
 
 		// Allow other tools
-		return claudecode.NewPermissionResultAllow(), nil
+		return claudecode.NewPermissionResultAllowWithInput(input), nil
 	})
 
 	err := claudecode.WithClient(ctx, func(client claudecode.Client) error {
@@ -251,7 +251,7 @@ func runAuditLoggingExample() {
 		fmt.Printf("  [AUDIT] Tool: %-10s | Input keys: %v\n", toolName, mapKeys(input))
 
 		// Allow all tools (audit-only mode)
-		return claudecode.NewPermissionResultAllow(), nil
+		return claudecode.NewPermissionResultAllowWithInput(input), nil
 	})
 
 	fmt.Println("Asking Claude to create a test file (all operations will be logged)...")

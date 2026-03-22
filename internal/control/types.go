@@ -246,8 +246,10 @@ type PermissionResult interface {
 type PermissionResultAllow struct {
 	// Behavior is always "allow".
 	Behavior string `json:"behavior"`
-	// UpdatedInput contains the modified tool input (optional).
-	UpdatedInput map[string]any `json:"updatedInput,omitempty"`
+	// UpdatedInput contains the tool input to use for execution.
+	// This field is REQUIRED by CLI's Zod schema for all allow responses.
+	// If nil, sendPermissionResponse defaults to empty map.
+	UpdatedInput map[string]any `json:"updatedInput"`
 	// UpdatedPermissions contains dynamic permission updates (optional).
 	UpdatedPermissions []PermissionUpdate `json:"updatedPermissions,omitempty"`
 }
@@ -258,7 +260,30 @@ func (PermissionResultAllow) permissionResult() {}
 // NewPermissionResultAllow creates an Allow result with proper defaults.
 // Go idiom: constructor functions for types with required fields.
 func NewPermissionResultAllow() PermissionResultAllow {
-	return PermissionResultAllow{Behavior: "allow"}
+	return PermissionResultAllow{
+		Behavior:     "allow",
+		UpdatedInput: map[string]any{},
+	}
+}
+
+// NewPermissionResultAllowWithInput creates an Allow result that passes through the tool input.
+// This is the recommended constructor — it ensures updatedInput matches what the tool received.
+//
+// Example:
+//
+//	func canUseTool(ctx context.Context, toolName string, input map[string]any, permCtx ToolPermissionContext) (PermissionResult, error) {
+//	    return NewPermissionResultAllowWithInput(input), nil
+//	}
+func NewPermissionResultAllowWithInput(input map[string]any) PermissionResultAllow {
+	result := PermissionResultAllow{
+		Behavior: "allow",
+	}
+	if input != nil {
+		result.UpdatedInput = input
+	} else {
+		result.UpdatedInput = map[string]any{}
+	}
+	return result
 }
 
 // PermissionResultDeny prevents tool execution.

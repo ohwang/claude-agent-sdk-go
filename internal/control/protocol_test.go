@@ -1443,6 +1443,11 @@ func testPermissionAllowCallback(t *testing.T) {
 		t.Fatal("response should be a map")
 	}
 	assertControlEqual(t, "allow", respData["behavior"])
+
+	// Verify updatedInput is ALWAYS present in the wire format (CLI Zod schema requires it)
+	if _, ok := respData["updatedInput"]; !ok {
+		t.Error("updatedInput must be present in allow response (CLI Zod schema requires it)")
+	}
 }
 
 func testPermissionDenyCallback(t *testing.T) {
@@ -1815,11 +1820,14 @@ func TestPermissionTypeSerialization(t *testing.T) {
 	t.Run("marshal_deny_result", testMarshalPermissionDenyResult)
 	t.Run("marshal_permission_update", testMarshalPermissionUpdate)
 	t.Run("marshal_permission_rule_value", testMarshalPermissionRuleValue)
+	t.Run("allow_always_includes_updated_input", testPermissionAllowAlwaysIncludesUpdatedInput)
+	t.Run("allow_wire_format_includes_updated_input", testPermissionAllowWireFormatIncludesUpdatedInput)
 }
 
 func testMarshalPermissionAllowResult(t *testing.T) {
 	t.Helper()
 
+	// Test with populated updatedInput
 	result := PermissionResultAllow{
 		Behavior:     "allow",
 		UpdatedInput: map[string]any{"file_path": "/safe/path"},
@@ -1837,6 +1845,23 @@ func testMarshalPermissionAllowResult(t *testing.T) {
 	// Verify camelCase field name
 	if _, ok := parsed["updatedInput"]; !ok {
 		t.Error("expected 'updatedInput' field (camelCase)")
+	}
+
+	// Test with empty updatedInput — must still be present in JSON (CLI Zod schema requires it)
+	emptyResult := PermissionResultAllow{
+		Behavior:     "allow",
+		UpdatedInput: map[string]any{},
+	}
+
+	data2, err := json.Marshal(emptyResult)
+	assertControlNoError(t, err)
+
+	var parsed2 map[string]any
+	err = json.Unmarshal(data2, &parsed2)
+	assertControlNoError(t, err)
+
+	if _, ok := parsed2["updatedInput"]; !ok {
+		t.Error("updatedInput must be present in JSON even when empty (CLI Zod schema requires it)")
 	}
 }
 
@@ -1912,6 +1937,95 @@ func testMarshalPermissionRuleValue(t *testing.T) {
 	// Verify camelCase field names in JSON
 	assertControlEqual(t, "Write", parsed["toolName"])
 	assertControlEqual(t, "allow /home/*", parsed["ruleContent"])
+}
+
+func testPermissionAllowAlwaysIncludesUpdatedInput(t *testing.T) {
+	t.Helper()
+
+	// Test 1: NewPermissionResultAllow() should have empty map
+	result := NewPermissionResultAllow()
+	if result.UpdatedInput == nil {
+		t.Error("NewPermissionResultAllow().UpdatedInput should not be nil")
+	}
+	if len(result.UpdatedInput) != 0 {
+		t.Errorf("NewPermissionResultAllow().UpdatedInput should be empty, got %v", result.UpdatedInput)
+	}
+
+	// Test 2: NewPermissionResultAllowWithInput preserves input
+	input := map[string]any{"command": "echo hello"}
+	result2 := NewPermissionResultAllowWithInput(input)
+	if result2.UpdatedInput == nil {
+		t.Error("UpdatedInput should not be nil")
+	}
+	if result2.UpdatedInput["command"] != "echo hello" {
+		t.Errorf("expected command='echo hello', got %v", result2.UpdatedInput["command"])
+	}
+
+	// Test 3: nil input defaults to empty map
+	result3 := NewPermissionResultAllowWithInput(nil)
+	if result3.UpdatedInput == nil {
+		t.Error("nil input should default to empty map, not nil")
+	}
+}
+
+func testPermissionAllowWireFormatIncludesUpdatedInput(t *testing.T) {
+	t.Helper()
+
+	ctx, cancel := setupControlTestContext(t, 5*time.Second)
+	defer cancel()
+
+	transport := newControlMockTransport()
+
+	// Callback returns NewPermissionResultAllow() (no input)
+	callback := func(_ context.Context, _ string, _ map[string]any, _ ToolPermissionContext) (PermissionResult, error) {
+		return NewPermissionResultAllow(), nil
+	}
+
+	protocol := NewProtocol(transport, WithCanUseToolCallback(callback))
+
+	err := protocol.Start(ctx)
+	assertControlNoError(t, err)
+	defer func() { _ = protocol.Close() }()
+
+	request := map[string]any{
+		"type":       MessageTypeControlRequest,
+		"request_id": "req_wire_1",
+		"request": map[string]any{
+			"subtype":   SubtypeCanUseTool,
+			"tool_name": "Read",
+			"input":     map[string]any{"file_path": "/tmp/test.txt"},
+		},
+	}
+
+	err = protocol.HandleIncomingMessage(ctx, request)
+	assertControlNoError(t, err)
+
+	transport.mu.Lock()
+	defer transport.mu.Unlock()
+
+	if len(transport.writtenData) == 0 {
+		t.Fatal("expected permission response to be sent")
+	}
+
+	// Parse the raw JSON to verify wire format
+	var rawParsed map[string]any
+	err = json.Unmarshal(transport.writtenData[0], &rawParsed)
+	assertControlNoError(t, err)
+
+	response, ok := rawParsed["response"].(map[string]any)
+	if !ok {
+		t.Fatal("response field should be an object")
+	}
+
+	respData, ok := response["response"].(map[string]any)
+	if !ok {
+		t.Fatal("inner response should be an object")
+	}
+
+	// The critical assertion: updatedInput MUST be present in wire format
+	if _, ok := respData["updatedInput"]; !ok {
+		t.Error("updatedInput MUST be present in wire format for allow responses (CLI Zod schema requires it)")
+	}
 }
 
 // ptrString is a helper to create a pointer to a string.
