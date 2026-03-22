@@ -1641,6 +1641,134 @@ func TestCheckCLIVersionSkipEnvVar(t *testing.T) {
 	}
 }
 
+// =============================================================================
+// WI-19: Additional CLI Flag Tests
+// =============================================================================
+
+// TestNewOptionsCLIFlags tests that new options correctly generate CLI flags.
+func TestNewOptionsCLIFlags(t *testing.T) {
+	t.Run("agent_flag", func(t *testing.T) {
+		agent := "code-reviewer"
+		options := &shared.Options{Agent: &agent}
+		cmd := BuildCommand("/usr/local/bin/claude", options, false)
+		assertContainsArgs(t, cmd, "--agent", "code-reviewer")
+	})
+
+	t.Run("session_id_flag", func(t *testing.T) {
+		sessionID := "sess-abc-123"
+		options := &shared.Options{SessionID: &sessionID}
+		cmd := BuildCommand("/usr/local/bin/claude", options, false)
+		assertContainsArgs(t, cmd, "--session-id", "sess-abc-123")
+	})
+
+	t.Run("persist_session_false", func(t *testing.T) {
+		persist := false
+		options := &shared.Options{PersistSession: &persist}
+		cmd := BuildCommand("/usr/local/bin/claude", options, false)
+		assertContainsArg(t, cmd, "--persist-session=false")
+	})
+
+	t.Run("persist_session_true_omitted", func(t *testing.T) {
+		persist := true
+		options := &shared.Options{PersistSession: &persist}
+		cmd := BuildCommand("/usr/local/bin/claude", options, false)
+		assertNotContainsArg(t, cmd, "--persist-session=false")
+	})
+
+	t.Run("persist_session_nil_omitted", func(t *testing.T) {
+		options := &shared.Options{}
+		cmd := BuildCommand("/usr/local/bin/claude", options, false)
+		assertNotContainsArg(t, cmd, "--persist-session=false")
+	})
+
+	t.Run("debug_flag", func(t *testing.T) {
+		debug := true
+		options := &shared.Options{Debug: &debug}
+		cmd := BuildCommand("/usr/local/bin/claude", options, false)
+		assertContainsArg(t, cmd, "--debug")
+	})
+
+	t.Run("debug_false_omitted", func(t *testing.T) {
+		debug := false
+		options := &shared.Options{Debug: &debug}
+		cmd := BuildCommand("/usr/local/bin/claude", options, false)
+		assertNotContainsArg(t, cmd, "--debug")
+	})
+
+	t.Run("debug_file_flag", func(t *testing.T) {
+		debugFile := "/tmp/debug.log"
+		options := &shared.Options{DebugFile: &debugFile}
+		cmd := BuildCommand("/usr/local/bin/claude", options, false)
+		assertContainsArgs(t, cmd, "--debug-file", "/tmp/debug.log")
+	})
+
+	t.Run("strict_mcp_config_flag", func(t *testing.T) {
+		strict := true
+		options := &shared.Options{StrictMcpConfig: &strict}
+		cmd := BuildCommand("/usr/local/bin/claude", options, false)
+		assertContainsArg(t, cmd, "--strict-mcp-config")
+	})
+
+	t.Run("strict_mcp_config_false_omitted", func(t *testing.T) {
+		strict := false
+		options := &shared.Options{StrictMcpConfig: &strict}
+		cmd := BuildCommand("/usr/local/bin/claude", options, false)
+		assertNotContainsArg(t, cmd, "--strict-mcp-config")
+	})
+
+	t.Run("prompt_suggestions_flag", func(t *testing.T) {
+		ps := true
+		options := &shared.Options{PromptSuggestions: &ps}
+		cmd := BuildCommand("/usr/local/bin/claude", options, false)
+		assertContainsArg(t, cmd, "--prompt-suggestions")
+	})
+
+	t.Run("allow_dangerously_skip_permissions_flag", func(t *testing.T) {
+		allow := true
+		options := &shared.Options{AllowDangerouslySkipPermissions: &allow}
+		cmd := BuildCommand("/usr/local/bin/claude", options, false)
+		assertContainsArg(t, cmd, "--allow-dangerously-skip-permissions")
+	})
+
+	t.Run("allow_dangerously_skip_permissions_false_omitted", func(t *testing.T) {
+		allow := false
+		options := &shared.Options{AllowDangerouslySkipPermissions: &allow}
+		cmd := BuildCommand("/usr/local/bin/claude", options, false)
+		assertNotContainsArg(t, cmd, "--allow-dangerously-skip-permissions")
+	})
+
+	t.Run("dont_ask_permission_mode", func(t *testing.T) {
+		mode := shared.PermissionModeDontAsk
+		options := &shared.Options{PermissionMode: &mode}
+		cmd := BuildCommand("/usr/local/bin/claude", options, false)
+		assertContainsArgs(t, cmd, "--permission-mode", "dontAsk")
+	})
+
+	t.Run("combined_new_flags", func(t *testing.T) {
+		agent := "reviewer"
+		sessionID := "sess-123"
+		debug := true
+		debugFile := "/tmp/debug.log"
+		strict := true
+		allow := true
+		options := &shared.Options{
+			Agent:                           &agent,
+			SessionID:                       &sessionID,
+			Debug:                           &debug,
+			DebugFile:                       &debugFile,
+			StrictMcpConfig:                 &strict,
+			AllowDangerouslySkipPermissions: &allow,
+		}
+		cmd := BuildCommand("/usr/local/bin/claude", options, false)
+		assertContainsArgs(t, cmd, "--agent", "reviewer")
+		assertContainsArgs(t, cmd, "--session-id", "sess-123")
+		assertContainsArg(t, cmd, "--debug")
+		assertContainsArgs(t, cmd, "--debug-file", "/tmp/debug.log")
+		assertContainsArg(t, cmd, "--strict-mcp-config")
+		assertContainsArg(t, cmd, "--allow-dangerously-skip-permissions")
+	})
+}
+
 // createVersionMockCLI creates a mock CLI script that outputs the given version
 func createVersionMockCLI(t *testing.T, version string) string {
 	t.Helper()

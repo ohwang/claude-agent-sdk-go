@@ -157,6 +157,8 @@ func addOptionsToCommand(cmd []string, options *shared.Options) []string {
 	cmd = addBetasFlag(cmd, options)
 	cmd = addSandboxFlags(cmd, options)
 	cmd = addOutputFormatFlags(cmd, options)
+	cmd = addDebugFlags(cmd, options)
+	cmd = addMiscFlags(cmd, options)
 	cmd = addExtraFlags(cmd, options)
 	return cmd
 }
@@ -222,6 +224,9 @@ func addPermissionFlags(cmd []string, options *shared.Options) []string {
 	if options.PermissionPromptToolName != nil {
 		cmd = append(cmd, "--permission-prompt-tool", *options.PermissionPromptToolName)
 	}
+	if options.AllowDangerouslySkipPermissions != nil && *options.AllowDangerouslySkipPermissions {
+		cmd = append(cmd, "--allow-dangerously-skip-permissions")
+	}
 	return cmd
 }
 
@@ -257,10 +262,22 @@ func addSessionFlags(cmd []string, options *shared.Options) []string {
 	if options.IncludePartialMessages {
 		cmd = append(cmd, "--include-partial-messages")
 	}
+	if options.SessionID != nil {
+		cmd = append(cmd, "--session-id", *options.SessionID)
+	}
+	if options.PersistSession != nil && !*options.PersistSession {
+		cmd = append(cmd, "--persist-session=false")
+	}
+	if options.PromptSuggestions != nil {
+		cmd = append(cmd, "--prompt-suggestions")
+	}
 	return cmd
 }
 
 func addAgentFlags(cmd []string, options *shared.Options) []string {
+	if options.Agent != nil {
+		cmd = append(cmd, "--agent", *options.Agent)
+	}
 	if len(options.Agents) == 0 {
 		return cmd
 	}
@@ -370,6 +387,23 @@ func addOutputFormatFlags(cmd []string, options *shared.Options) []string {
 	}
 
 	return append(cmd, "--json-schema", string(schemaData))
+}
+
+func addDebugFlags(cmd []string, options *shared.Options) []string {
+	if options.Debug != nil && *options.Debug {
+		cmd = append(cmd, "--debug")
+	}
+	if options.DebugFile != nil {
+		cmd = append(cmd, "--debug-file", *options.DebugFile)
+	}
+	return cmd
+}
+
+func addMiscFlags(cmd []string, options *shared.Options) []string {
+	if options.StrictMcpConfig != nil && *options.StrictMcpConfig {
+		cmd = append(cmd, "--strict-mcp-config")
+	}
+	return cmd
 }
 
 func addExtraFlags(cmd []string, options *shared.Options) []string {

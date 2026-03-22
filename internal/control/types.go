@@ -251,6 +251,38 @@ type CanUseToolCallback func(
 ) (PermissionResult, error)
 
 // =============================================================================
+// Permission Update Destination & Behavior Types
+// =============================================================================
+
+// PermissionUpdateDestination specifies where a permission update applies.
+type PermissionUpdateDestination string
+
+const (
+	// PermissionDestinationUserSettings applies the update to user-level settings.
+	PermissionDestinationUserSettings PermissionUpdateDestination = "userSettings"
+	// PermissionDestinationProjectSettings applies the update to project-level settings.
+	PermissionDestinationProjectSettings PermissionUpdateDestination = "projectSettings"
+	// PermissionDestinationLocalSettings applies the update to local/workspace-level settings.
+	PermissionDestinationLocalSettings PermissionUpdateDestination = "localSettings"
+	// PermissionDestinationSession applies the update to the current session only.
+	PermissionDestinationSession PermissionUpdateDestination = "session"
+	// PermissionDestinationCLIArg applies the update from a CLI argument.
+	PermissionDestinationCLIArg PermissionUpdateDestination = "cliArg"
+)
+
+// PermissionBehavior specifies the behavior for a permission rule.
+type PermissionBehavior string
+
+const (
+	// PermissionBehaviorAllow permits tool execution.
+	PermissionBehaviorAllow PermissionBehavior = "allow"
+	// PermissionBehaviorDeny prevents tool execution.
+	PermissionBehaviorDeny PermissionBehavior = "deny"
+	// PermissionBehaviorAsk prompts for user confirmation.
+	PermissionBehaviorAsk PermissionBehavior = "ask"
+)
+
+// =============================================================================
 // MCP Server Types (Issue #7)
 // =============================================================================
 

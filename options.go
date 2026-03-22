@@ -92,12 +92,19 @@ type PermissionRuleValue = control.PermissionRuleValue
 // PermissionUpdateType specifies the type of permission update.
 type PermissionUpdateType = control.PermissionUpdateType
 
+// PermissionUpdateDestination specifies where a permission update applies.
+type PermissionUpdateDestination = control.PermissionUpdateDestination
+
+// PermissionBehavior specifies the behavior for a permission rule.
+type PermissionBehavior = control.PermissionBehavior
+
 // Re-export constants
 const (
 	PermissionModeDefault           = shared.PermissionModeDefault
 	PermissionModeAcceptEdits       = shared.PermissionModeAcceptEdits
 	PermissionModePlan              = shared.PermissionModePlan
 	PermissionModeBypassPermissions = shared.PermissionModeBypassPermissions
+	PermissionModeDontAsk           = shared.PermissionModeDontAsk
 	McpServerTypeStdio              = shared.McpServerTypeStdio
 	McpServerTypeSSE                = shared.McpServerTypeSSE
 	McpServerTypeHTTP               = shared.McpServerTypeHTTP
@@ -106,6 +113,22 @@ const (
 	SettingSourceProject            = shared.SettingSourceProject
 	SettingSourceLocal              = shared.SettingSourceLocal
 	SdkPluginTypeLocal              = shared.SdkPluginTypeLocal
+)
+
+// Permission update destination constants
+const (
+	PermissionDestinationUserSettings    = control.PermissionDestinationUserSettings
+	PermissionDestinationProjectSettings = control.PermissionDestinationProjectSettings
+	PermissionDestinationLocalSettings   = control.PermissionDestinationLocalSettings
+	PermissionDestinationSession         = control.PermissionDestinationSession
+	PermissionDestinationCLIArg          = control.PermissionDestinationCLIArg
+)
+
+// Permission behavior constants
+const (
+	PermissionBehaviorAllow = control.PermissionBehaviorAllow
+	PermissionBehaviorDeny  = control.PermissionBehaviorDeny
+	PermissionBehaviorAsk   = control.PermissionBehaviorAsk
 )
 
 // Permission update type constants
@@ -785,4 +808,108 @@ func WithPreToolUseHook(matcher string, callback HookCallback) Option {
 // Pass empty string for matcher to match all tools.
 func WithPostToolUseHook(matcher string, callback HookCallback) Option {
 	return WithHook(HookEventPostToolUse, matcher, callback)
+}
+
+// =============================================================================
+// Elicitation Options (WI-14)
+// =============================================================================
+
+// WithOnElicitation sets the callback for MCP elicitation requests.
+// The callback is invoked when an MCP server requests user input.
+// It must be thread-safe as it may be invoked concurrently.
+//
+// Example:
+//
+//	client := claudecode.NewClient(
+//	    claudecode.WithOnElicitation(func(
+//	        ctx context.Context,
+//	        req claudecode.ElicitationRequest,
+//	    ) (*claudecode.ElicitationResult, error) {
+//	        return &claudecode.ElicitationResult{Action: "accept"}, nil
+//	    }),
+//	)
+func WithOnElicitation(callback OnElicitation) Option {
+	return func(o *Options) {
+		if callback == nil {
+			o.OnElicitation = nil
+			return
+		}
+		o.OnElicitation = callback
+	}
+}
+
+// =============================================================================
+// Additional Options (WI-19)
+// =============================================================================
+
+// WithMainAgent sets the agent name for the main thread.
+func WithMainAgent(agent string) Option {
+	return func(o *Options) {
+		o.Agent = &agent
+	}
+}
+
+// WithSessionID sets the session ID for the conversation.
+func WithSessionID(sessionID string) Option {
+	return func(o *Options) {
+		o.SessionID = &sessionID
+	}
+}
+
+// WithResumeSessionAt sets the message UUID to resume a session at.
+func WithResumeSessionAt(messageUUID string) Option {
+	return func(o *Options) {
+		o.ResumeSessionAt = &messageUUID
+	}
+}
+
+// WithPersistSession sets whether to persist the session.
+func WithPersistSession(persist bool) Option {
+	return func(o *Options) {
+		o.PersistSession = &persist
+	}
+}
+
+// WithPromptSuggestions enables or disables prompt suggestions.
+func WithPromptSuggestions(enabled bool) Option {
+	return func(o *Options) {
+		o.PromptSuggestions = &enabled
+	}
+}
+
+// WithAgentProgressSummaries enables or disables agent progress summaries.
+func WithAgentProgressSummaries(enabled bool) Option {
+	return func(o *Options) {
+		o.AgentProgressSummaries = &enabled
+	}
+}
+
+// WithDebug enables or disables debug mode for the CLI subprocess.
+// When enabled, the CLI outputs additional debugging information.
+func WithDebug(enabled bool) Option {
+	return func(o *Options) {
+		o.Debug = &enabled
+	}
+}
+
+// WithDebugFile sets the file path for debug output.
+func WithDebugFile(path string) Option {
+	return func(o *Options) {
+		o.DebugFile = &path
+	}
+}
+
+// WithStrictMcpConfig enables or disables strict MCP configuration validation.
+func WithStrictMcpConfig(strict bool) Option {
+	return func(o *Options) {
+		o.StrictMcpConfig = &strict
+	}
+}
+
+// WithAllowDangerouslySkipPermissions enables or disables the permission safety gate.
+// When enabled, allows skipping permission checks entirely. Use with caution.
+func WithAllowDangerouslySkipPermissions(allow bool) Option {
+	return func(o *Options) {
+		o.AllowDangerouslySkipPermissions = &allow
+	}
 }

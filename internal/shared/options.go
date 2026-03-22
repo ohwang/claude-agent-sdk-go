@@ -23,6 +23,8 @@ const (
 	PermissionModePlan PermissionMode = "plan"
 	// PermissionModeBypassPermissions bypasses all permission checks.
 	PermissionModeBypassPermissions PermissionMode = "bypassPermissions"
+	// PermissionModeDontAsk skips all permission prompts without asking.
+	PermissionModeDontAsk PermissionMode = "dontAsk"
 )
 
 // SdkBeta represents a beta feature identifier.
@@ -172,8 +174,9 @@ type Options struct {
 	MaxBufferSize *int `json:"max_buffer_size,omitempty"`
 
 	// Permission & Safety System
-	PermissionMode           *PermissionMode `json:"permission_mode,omitempty"`
-	PermissionPromptToolName *string         `json:"permission_prompt_tool_name,omitempty"`
+	PermissionMode                  *PermissionMode `json:"permission_mode,omitempty"`
+	PermissionPromptToolName        *string         `json:"permission_prompt_tool_name,omitempty"`
+	AllowDangerouslySkipPermissions *bool           `json:"allow_dangerously_skip_permissions,omitempty"`
 
 	// Session & State Management
 	ContinueConversation bool            `json:"continue_conversation,omitempty"`
@@ -182,6 +185,20 @@ type Options struct {
 	Settings             *string         `json:"settings,omitempty"`
 	ForkSession          bool            `json:"fork_session,omitempty"`
 	SettingSources       []SettingSource `json:"setting_sources,omitempty"`
+	SessionID            *string         `json:"session_id,omitempty"`
+	ResumeSessionAt      *string         `json:"resume_session_at,omitempty"`
+	PersistSession       *bool           `json:"persist_session,omitempty"`
+
+	// Agent Name
+	Agent *string `json:"agent,omitempty"`
+
+	// Features
+	PromptSuggestions      *bool `json:"prompt_suggestions,omitempty"`
+	AgentProgressSummaries *bool `json:"agent_progress_summaries,omitempty"`
+
+	// Debug
+	Debug     *bool   `json:"debug,omitempty"`
+	DebugFile *string `json:"debug_file,omitempty"`
 
 	// Partial Message Streaming
 	IncludePartialMessages bool `json:"include_partial_messages,omitempty"`
@@ -200,7 +217,8 @@ type Options struct {
 	AddDirs []string `json:"add_dirs,omitempty"`
 
 	// MCP Integration
-	McpServers map[string]McpServerConfig `json:"mcp_servers,omitempty"`
+	McpServers      map[string]McpServerConfig `json:"mcp_servers,omitempty"`
+	StrictMcpConfig *bool                      `json:"strict_mcp_config,omitempty"`
 
 	// Sandbox Configuration
 	Sandbox *SandboxSettings `json:"sandbox,omitempty"`
@@ -254,6 +272,12 @@ type Options struct {
 	// Stored as any to avoid import cycles with internal/control package.
 	// Use the claudecode package's WithHook option for type-safe configuration.
 	Hooks any `json:"-"` // Not serialized
+
+	// OnElicitation is the callback for MCP elicitation requests.
+	// The actual type is claudecode.OnElicitation.
+	// Stored as any to avoid import cycles with the root package.
+	// Use the claudecode package's WithOnElicitation option for type-safe configuration.
+	OnElicitation any `json:"-"` // Not serialized
 }
 
 // McpServerType represents the type of MCP server.

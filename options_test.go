@@ -3601,3 +3601,289 @@ func TestWithSdkMcpServer(t *testing.T) {
 		}
 	})
 }
+
+// =============================================================================
+// WI-13: Permission Update Destination & Behavior Constants
+// =============================================================================
+
+// TestPermissionUpdateDestinationConstants tests PermissionUpdateDestination values.
+func TestPermissionUpdateDestinationConstants(t *testing.T) {
+	tests := []struct {
+		name     string
+		constant PermissionUpdateDestination
+		expected string
+	}{
+		{"user_settings", PermissionDestinationUserSettings, "userSettings"},
+		{"project_settings", PermissionDestinationProjectSettings, "projectSettings"},
+		{"local_settings", PermissionDestinationLocalSettings, "localSettings"},
+		{"session", PermissionDestinationSession, "session"},
+		{"cli_arg", PermissionDestinationCLIArg, "cliArg"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if string(tt.constant) != tt.expected {
+				t.Errorf("Expected %q, got %q", tt.expected, string(tt.constant))
+			}
+		})
+	}
+}
+
+// TestPermissionBehaviorConstants tests PermissionBehavior values.
+func TestPermissionBehaviorConstants(t *testing.T) {
+	tests := []struct {
+		name     string
+		constant PermissionBehavior
+		expected string
+	}{
+		{"allow", PermissionBehaviorAllow, "allow"},
+		{"deny", PermissionBehaviorDeny, "deny"},
+		{"ask", PermissionBehaviorAsk, "ask"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if string(tt.constant) != tt.expected {
+				t.Errorf("Expected %q, got %q", tt.expected, string(tt.constant))
+			}
+		})
+	}
+}
+
+// TestPermissionModeDontAsk tests the PermissionModeDontAsk constant.
+func TestPermissionModeDontAsk(t *testing.T) {
+	if string(PermissionModeDontAsk) != "dontAsk" {
+		t.Errorf("Expected PermissionModeDontAsk = %q, got %q", "dontAsk", string(PermissionModeDontAsk))
+	}
+
+	// Verify it works with WithPermissionMode
+	options := NewOptions(WithPermissionMode(PermissionModeDontAsk))
+	assertOptionsPermissionMode(t, options, PermissionModeDontAsk)
+}
+
+// =============================================================================
+// WI-19: Additional Option Constructors
+// =============================================================================
+
+// TestWithMainAgent tests the WithMainAgent option constructor.
+func TestWithMainAgent(t *testing.T) {
+	t.Run("set_agent", func(t *testing.T) {
+		options := NewOptions(WithMainAgent("code-reviewer"))
+		assertOptionsStringPtr(t, options.Agent, "code-reviewer", "Agent")
+	})
+
+	t.Run("override_agent", func(t *testing.T) {
+		options := NewOptions(
+			WithMainAgent("first"),
+			WithMainAgent("second"),
+		)
+		assertOptionsStringPtr(t, options.Agent, "second", "Agent")
+	})
+}
+
+// TestWithSessionID tests the WithSessionID option constructor.
+func TestWithSessionID(t *testing.T) {
+	options := NewOptions(WithSessionID("sess-abc-123"))
+	assertOptionsStringPtr(t, options.SessionID, "sess-abc-123", "SessionID")
+}
+
+// TestWithResumeSessionAt tests the WithResumeSessionAt option constructor.
+func TestWithResumeSessionAt(t *testing.T) {
+	options := NewOptions(WithResumeSessionAt("msg-uuid-456"))
+	assertOptionsStringPtr(t, options.ResumeSessionAt, "msg-uuid-456", "ResumeSessionAt")
+}
+
+// TestWithPersistSession tests the WithPersistSession option constructor.
+func TestWithPersistSession(t *testing.T) {
+	tests := []struct {
+		name    string
+		persist bool
+	}{
+		{"enabled", true},
+		{"disabled", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			options := NewOptions(WithPersistSession(tt.persist))
+			assertOptionsBoolPtr(t, options.PersistSession, tt.persist, "PersistSession")
+		})
+	}
+}
+
+// TestWithPromptSuggestions tests the WithPromptSuggestions option constructor.
+func TestWithPromptSuggestions(t *testing.T) {
+	tests := []struct {
+		name    string
+		enabled bool
+	}{
+		{"enabled", true},
+		{"disabled", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			options := NewOptions(WithPromptSuggestions(tt.enabled))
+			assertOptionsBoolPtr(t, options.PromptSuggestions, tt.enabled, "PromptSuggestions")
+		})
+	}
+}
+
+// TestWithAgentProgressSummaries tests the WithAgentProgressSummaries option constructor.
+func TestWithAgentProgressSummaries(t *testing.T) {
+	tests := []struct {
+		name    string
+		enabled bool
+	}{
+		{"enabled", true},
+		{"disabled", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			options := NewOptions(WithAgentProgressSummaries(tt.enabled))
+			assertOptionsBoolPtr(t, options.AgentProgressSummaries, tt.enabled, "AgentProgressSummaries")
+		})
+	}
+}
+
+// TestWithDebugOption tests the WithDebug option constructor.
+func TestWithDebugOption(t *testing.T) {
+	tests := []struct {
+		name    string
+		enabled bool
+	}{
+		{"enabled", true},
+		{"disabled", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			options := NewOptions(WithDebug(tt.enabled))
+			assertOptionsBoolPtr(t, options.Debug, tt.enabled, "Debug")
+		})
+	}
+}
+
+// TestWithDebugFile tests the WithDebugFile option constructor.
+func TestWithDebugFile(t *testing.T) {
+	options := NewOptions(WithDebugFile("/tmp/debug.log"))
+	assertOptionsStringPtr(t, options.DebugFile, "/tmp/debug.log", "DebugFile")
+}
+
+// TestWithStrictMcpConfig tests the WithStrictMcpConfig option constructor.
+func TestWithStrictMcpConfig(t *testing.T) {
+	tests := []struct {
+		name   string
+		strict bool
+	}{
+		{"enabled", true},
+		{"disabled", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			options := NewOptions(WithStrictMcpConfig(tt.strict))
+			assertOptionsBoolPtr(t, options.StrictMcpConfig, tt.strict, "StrictMcpConfig")
+		})
+	}
+}
+
+// TestWithAllowDangerouslySkipPermissions tests the WithAllowDangerouslySkipPermissions option.
+func TestWithAllowDangerouslySkipPermissions(t *testing.T) {
+	tests := []struct {
+		name  string
+		allow bool
+	}{
+		{"enabled", true},
+		{"disabled", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			options := NewOptions(WithAllowDangerouslySkipPermissions(tt.allow))
+			assertOptionsBoolPtr(t, options.AllowDangerouslySkipPermissions, tt.allow, "AllowDangerouslySkipPermissions")
+		})
+	}
+}
+
+// TestNewOptionsDefaultsForNewFields tests that new fields have correct nil defaults.
+func TestNewOptionsDefaultsForNewFields(t *testing.T) {
+	options := NewOptions()
+
+	nilPtrTests := []struct {
+		name  string
+		check func() bool
+	}{
+		{"Agent", func() bool { return options.Agent == nil }},
+		{"SessionID", func() bool { return options.SessionID == nil }},
+		{"ResumeSessionAt", func() bool { return options.ResumeSessionAt == nil }},
+		{"PersistSession", func() bool { return options.PersistSession == nil }},
+		{"PromptSuggestions", func() bool { return options.PromptSuggestions == nil }},
+		{"AgentProgressSummaries", func() bool { return options.AgentProgressSummaries == nil }},
+		{"Debug", func() bool { return options.Debug == nil }},
+		{"DebugFile", func() bool { return options.DebugFile == nil }},
+		{"StrictMcpConfig", func() bool { return options.StrictMcpConfig == nil }},
+		{"AllowDangerouslySkipPermissions", func() bool { return options.AllowDangerouslySkipPermissions == nil }},
+		{"OnElicitation", func() bool { return options.OnElicitation == nil }},
+	}
+
+	for _, tt := range nilPtrTests {
+		t.Run(tt.name+"_nil", func(t *testing.T) {
+			if !tt.check() {
+				t.Errorf("Expected %s to be nil by default", tt.name)
+			}
+		})
+	}
+}
+
+// TestCombinedNewOptions tests combining multiple new options in a single NewOptions call.
+func TestCombinedNewOptions(t *testing.T) {
+	options := NewOptions(
+		WithMainAgent("reviewer"),
+		WithSessionID("sess-123"),
+		WithPersistSession(true),
+		WithDebug(true),
+		WithDebugFile("/tmp/debug.log"),
+		WithStrictMcpConfig(true),
+		WithPermissionMode(PermissionModeDontAsk),
+		WithPromptSuggestions(false),
+		WithAgentProgressSummaries(true),
+		WithAllowDangerouslySkipPermissions(true),
+	)
+
+	assertOptionsStringPtr(t, options.Agent, "reviewer", "Agent")
+	assertOptionsStringPtr(t, options.SessionID, "sess-123", "SessionID")
+	assertOptionsBoolPtr(t, options.PersistSession, true, "PersistSession")
+	assertOptionsBoolPtr(t, options.Debug, true, "Debug")
+	assertOptionsStringPtr(t, options.DebugFile, "/tmp/debug.log", "DebugFile")
+	assertOptionsBoolPtr(t, options.StrictMcpConfig, true, "StrictMcpConfig")
+	assertOptionsPermissionMode(t, options, PermissionModeDontAsk)
+	assertOptionsBoolPtr(t, options.PromptSuggestions, false, "PromptSuggestions")
+	assertOptionsBoolPtr(t, options.AgentProgressSummaries, true, "AgentProgressSummaries")
+	assertOptionsBoolPtr(t, options.AllowDangerouslySkipPermissions, true, "AllowDangerouslySkipPermissions")
+}
+
+// Assertion helpers for new option types
+
+func assertOptionsStringPtr(t *testing.T, actual *string, expected string, fieldName string) {
+	t.Helper()
+	if actual == nil {
+		t.Errorf("Expected %s to be set, got nil", fieldName)
+		return
+	}
+	if *actual != expected {
+		t.Errorf("Expected %s = %q, got %q", fieldName, expected, *actual)
+	}
+}
+
+func assertOptionsBoolPtr(t *testing.T, actual *bool, expected bool, fieldName string) {
+	t.Helper()
+	if actual == nil {
+		t.Errorf("Expected %s to be set, got nil", fieldName)
+		return
+	}
+	if *actual != expected {
+		t.Errorf("Expected %s = %v, got %v", fieldName, expected, *actual)
+	}
+}
