@@ -1,4 +1,19 @@
-package claudecode
+// Package mcp provides MCP (Model Context Protocol) tool and server
+// implementations for in-process SDK MCP servers.
+//
+// This package contains the tool definition and server types used to create
+// custom tools that run within your Go application. SDK MCP servers enable
+// domain-specific tools without external subprocess overhead.
+//
+// Key components:
+//   - NewTool: Creates tool definitions (Go alternative to Python's @tool decorator)
+//   - CreateSDKMcpServer: Creates an MCP server instance with tools
+//
+// Example:
+//
+//	addTool := mcp.NewTool("add", "Add two numbers", schema, handler)
+//	server := mcp.CreateSDKMcpServer("calculator", "1.0.0", addTool)
+package mcp
 
 import (
 	"context"
@@ -9,7 +24,7 @@ import (
 )
 
 // Type aliases for MCP types from shared package.
-// This provides a clean public API while keeping types in shared for internal use.
+// These provide direct access when importing the mcp sub-package.
 type (
 	// McpToolResult represents the result of a tool call.
 	McpToolResult = shared.McpToolResult
@@ -54,7 +69,7 @@ type McpTool struct {
 //
 // Example:
 //
-//	addTool := claudecode.NewTool(
+//	addTool := mcp.NewTool(
 //	    "add",
 //	    "Add two numbers together",
 //	    map[string]any{
@@ -65,11 +80,11 @@ type McpTool struct {
 //	        },
 //	        "required": []string{"a", "b"},
 //	    },
-//	    func(ctx context.Context, args map[string]any) (*claudecode.McpToolResult, error) {
+//	    func(ctx context.Context, args map[string]any) (*mcp.McpToolResult, error) {
 //	        a, _ := args["a"].(float64)
 //	        b, _ := args["b"].(float64)
-//	        return &claudecode.McpToolResult{
-//	            Content: []claudecode.McpContent{
+//	        return &mcp.McpToolResult{
+//	            Content: []mcp.McpContent{
 //	                {Type: "text", Text: fmt.Sprintf("%.2f + %.2f = %.2f", a, b, a+b)},
 //	            },
 //	        }, nil
@@ -122,7 +137,7 @@ type SdkMcpServer struct {
 //
 // Example:
 //
-//	calculator := claudecode.CreateSDKMcpServer("calculator", "1.0.0", addTool, sqrtTool)
+//	calculator := mcp.CreateSDKMcpServer("calculator", "1.0.0", addTool, sqrtTool)
 //
 //	client := claudecode.NewClient(
 //	    claudecode.WithSdkMcpServer("calc", calculator),

@@ -24,6 +24,7 @@ import (
 	"time"
 
 	claudecode "github.com/severity1/claude-agent-sdk-go"
+	"github.com/severity1/claude-agent-sdk-go/mcp"
 )
 
 func main() {
@@ -54,7 +55,7 @@ func runCalculatorExample() {
 	defer cancel()
 
 	// Create the "add" tool - adds two numbers
-	addTool := claudecode.NewTool(
+	addTool := mcp.NewTool(
 		"add",
 		"Add two numbers together and return the sum",
 		map[string]any{
@@ -71,13 +72,13 @@ func runCalculatorExample() {
 			},
 			"required": []string{"a", "b"},
 		},
-		func(_ context.Context, args map[string]any) (*claudecode.McpToolResult, error) {
+		func(_ context.Context, args map[string]any) (*mcp.McpToolResult, error) {
 			a, _ := args["a"].(float64)
 			b, _ := args["b"].(float64)
 			result := a + b
 			fmt.Printf("  [TOOL] add(%v, %v) = %v\n", a, b, result)
-			return &claudecode.McpToolResult{
-				Content: []claudecode.McpContent{
+			return &mcp.McpToolResult{
+				Content: []mcp.McpContent{
 					{Type: "text", Text: fmt.Sprintf("%.2f + %.2f = %.2f", a, b, result)},
 				},
 			}, nil
@@ -85,7 +86,7 @@ func runCalculatorExample() {
 	)
 
 	// Create the "sqrt" tool - calculates square root
-	sqrtTool := claudecode.NewTool(
+	sqrtTool := mcp.NewTool(
 		"sqrt",
 		"Calculate the square root of a number",
 		map[string]any{
@@ -98,12 +99,12 @@ func runCalculatorExample() {
 			},
 			"required": []string{"n"},
 		},
-		func(_ context.Context, args map[string]any) (*claudecode.McpToolResult, error) {
+		func(_ context.Context, args map[string]any) (*mcp.McpToolResult, error) {
 			n, _ := args["n"].(float64)
 			if n < 0 {
 				fmt.Printf("  [TOOL] sqrt(%v) = ERROR (negative number)\n", n)
-				return &claudecode.McpToolResult{
-					Content: []claudecode.McpContent{
+				return &mcp.McpToolResult{
+					Content: []mcp.McpContent{
 						{Type: "text", Text: "Error: Cannot calculate square root of negative number"},
 					},
 					IsError: true,
@@ -111,8 +112,8 @@ func runCalculatorExample() {
 			}
 			result := math.Sqrt(n)
 			fmt.Printf("  [TOOL] sqrt(%v) = %v\n", n, result)
-			return &claudecode.McpToolResult{
-				Content: []claudecode.McpContent{
+			return &mcp.McpToolResult{
+				Content: []mcp.McpContent{
 					{Type: "text", Text: fmt.Sprintf("sqrt(%.2f) = %.4f", n, result)},
 				},
 			}, nil
@@ -120,7 +121,7 @@ func runCalculatorExample() {
 	)
 
 	// Create the SDK MCP server with both tools
-	calculator := claudecode.CreateSDKMcpServer("calculator", "1.0.0", addTool, sqrtTool)
+	calculator := mcp.CreateSDKMcpServer("calculator", "1.0.0", addTool, sqrtTool)
 
 	fmt.Println("Asking Claude to perform calculations...")
 
@@ -156,7 +157,7 @@ func runTextProcessorExample() {
 	defer cancel()
 
 	// Create "uppercase" tool
-	uppercaseTool := claudecode.NewTool(
+	uppercaseTool := mcp.NewTool(
 		"uppercase",
 		"Convert text to uppercase",
 		map[string]any{
@@ -169,12 +170,12 @@ func runTextProcessorExample() {
 			},
 			"required": []string{"text"},
 		},
-		func(_ context.Context, args map[string]any) (*claudecode.McpToolResult, error) {
+		func(_ context.Context, args map[string]any) (*mcp.McpToolResult, error) {
 			text, _ := args["text"].(string)
 			result := strings.ToUpper(text)
 			fmt.Printf("  [TOOL] uppercase(%q) = %q\n", text, result)
-			return &claudecode.McpToolResult{
-				Content: []claudecode.McpContent{
+			return &mcp.McpToolResult{
+				Content: []mcp.McpContent{
 					{Type: "text", Text: result},
 				},
 			}, nil
@@ -182,7 +183,7 @@ func runTextProcessorExample() {
 	)
 
 	// Create "reverse" tool
-	reverseTool := claudecode.NewTool(
+	reverseTool := mcp.NewTool(
 		"reverse",
 		"Reverse a string",
 		map[string]any{
@@ -195,7 +196,7 @@ func runTextProcessorExample() {
 			},
 			"required": []string{"text"},
 		},
-		func(_ context.Context, args map[string]any) (*claudecode.McpToolResult, error) {
+		func(_ context.Context, args map[string]any) (*mcp.McpToolResult, error) {
 			text, _ := args["text"].(string)
 			runes := []rune(text)
 			for i, j := 0, len(runes)-1; i < j; i, j = i+1, j-1 {
@@ -203,8 +204,8 @@ func runTextProcessorExample() {
 			}
 			result := string(runes)
 			fmt.Printf("  [TOOL] reverse(%q) = %q\n", text, result)
-			return &claudecode.McpToolResult{
-				Content: []claudecode.McpContent{
+			return &mcp.McpToolResult{
+				Content: []mcp.McpContent{
 					{Type: "text", Text: result},
 				},
 			}, nil
@@ -212,7 +213,7 @@ func runTextProcessorExample() {
 	)
 
 	// Create "word_count" tool
-	wordCountTool := claudecode.NewTool(
+	wordCountTool := mcp.NewTool(
 		"word_count",
 		"Count the number of words in text",
 		map[string]any{
@@ -225,13 +226,13 @@ func runTextProcessorExample() {
 			},
 			"required": []string{"text"},
 		},
-		func(_ context.Context, args map[string]any) (*claudecode.McpToolResult, error) {
+		func(_ context.Context, args map[string]any) (*mcp.McpToolResult, error) {
 			text, _ := args["text"].(string)
 			words := strings.Fields(text)
 			count := len(words)
 			fmt.Printf("  [TOOL] word_count(%q) = %d\n", text, count)
-			return &claudecode.McpToolResult{
-				Content: []claudecode.McpContent{
+			return &mcp.McpToolResult{
+				Content: []mcp.McpContent{
 					{Type: "text", Text: fmt.Sprintf("Word count: %d", count)},
 				},
 			}, nil
@@ -239,7 +240,7 @@ func runTextProcessorExample() {
 	)
 
 	// Create the text processor server
-	textProcessor := claudecode.CreateSDKMcpServer(
+	textProcessor := mcp.CreateSDKMcpServer(
 		"textproc", "1.0.0",
 		uppercaseTool, reverseTool, wordCountTool,
 	)

@@ -6,6 +6,8 @@ import (
 	"io"
 	"os"
 	"testing"
+
+	"github.com/severity1/claude-agent-sdk-go/mcp"
 )
 
 // Ensure context is used (for mock transport)
@@ -3533,7 +3535,7 @@ func TestWithSdkMcpServer(t *testing.T) {
 	t.Run("initializes_nil_map", func(t *testing.T) {
 		// Test the nil map initialization branch by applying option directly
 		// to an empty Options struct (not via NewOptions which pre-initializes)
-		server := CreateSDKMcpServer("calculator", "1.0.0")
+		server := mcp.CreateSDKMcpServer("calculator", "1.0.0")
 		opt := WithSdkMcpServer("calc", server)
 
 		opts := &Options{} // McpServers is nil
@@ -3551,7 +3553,7 @@ func TestWithSdkMcpServer(t *testing.T) {
 	})
 
 	t.Run("adds_server_via_new_options", func(t *testing.T) {
-		server := CreateSDKMcpServer("calculator", "1.0.0")
+		server := mcp.CreateSDKMcpServer("calculator", "1.0.0")
 		opts := NewOptions(WithSdkMcpServer("calc", server))
 
 		if opts.McpServers == nil {
@@ -3566,8 +3568,8 @@ func TestWithSdkMcpServer(t *testing.T) {
 	})
 
 	t.Run("adds_server_to_existing_map", func(t *testing.T) {
-		server1 := CreateSDKMcpServer("calc1", "1.0.0")
-		server2 := CreateSDKMcpServer("calc2", "1.0.0")
+		server1 := mcp.CreateSDKMcpServer("calc1", "1.0.0")
+		server2 := mcp.CreateSDKMcpServer("calc2", "1.0.0")
 
 		opts := NewOptions(
 			WithSdkMcpServer("first", server1),
@@ -3586,7 +3588,7 @@ func TestWithSdkMcpServer(t *testing.T) {
 	})
 
 	t.Run("server_has_correct_type", func(t *testing.T) {
-		server := CreateSDKMcpServer("test", "1.0.0")
+		server := mcp.CreateSDKMcpServer("test", "1.0.0")
 		opts := NewOptions(WithSdkMcpServer("test", server))
 
 		stored := opts.McpServers["test"]

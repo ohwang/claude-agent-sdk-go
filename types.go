@@ -104,6 +104,22 @@ type AgentModel = shared.AgentModel
 // AgentDefinition defines a programmatic subagent.
 type AgentDefinition = shared.AgentDefinition
 
+// MCP type aliases for backward compatibility.
+// Implementation code lives in the mcp/ sub-package.
+type (
+	// McpToolResult represents the result of a tool call.
+	McpToolResult = shared.McpToolResult
+	// McpContent represents content returned by a tool.
+	McpContent = shared.McpContent
+	// McpToolDefinition describes a tool exposed by an MCP server.
+	McpToolDefinition = shared.McpToolDefinition
+	// McpSdkServerConfig configures an in-process SDK MCP server.
+	McpSdkServerConfig = shared.McpSdkServerConfig
+)
+
+// McpServerTypeSdk represents an in-process SDK MCP server.
+const McpServerTypeSdk = shared.McpServerTypeSdk
+
 // Re-export agent model constants
 const (
 	AgentModelSonnet  = shared.AgentModelSonnet
