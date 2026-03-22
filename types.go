@@ -196,6 +196,29 @@ type (
 // McpServerTypeSdk represents an in-process SDK MCP server.
 const McpServerTypeSdk = shared.McpServerTypeSdk
 
+// MCP server status types.
+type (
+	// McpServerConnectionStatus represents the connection status of an MCP server.
+	McpServerConnectionStatus = shared.McpServerConnectionStatus
+	// McpServerInfo contains basic information about an MCP server.
+	McpServerInfo = shared.McpServerInfo
+	// McpToolInfo describes a tool exposed by an MCP server in status responses.
+	McpToolInfo = shared.McpToolInfo
+	// McpServerStatusEntry represents the status of a single MCP server.
+	McpServerStatusEntry = shared.McpServerStatusEntry
+	// McpSetServersResult contains the result of a SetMcpServers operation.
+	McpSetServersResult = shared.McpSetServersResult
+)
+
+// MCP server connection status constants.
+const (
+	McpServerStatusConnected = shared.McpServerStatusConnected
+	McpServerStatusFailed    = shared.McpServerStatusFailed
+	McpServerStatusNeedsAuth = shared.McpServerStatusNeedsAuth
+	McpServerStatusPending   = shared.McpServerStatusPending
+	McpServerStatusDisabled  = shared.McpServerStatusDisabled
+)
+
 // Re-export agent model constants
 const (
 	AgentModelSonnet  = shared.AgentModelSonnet
@@ -302,3 +325,102 @@ const (
 	ResponseSubtypeSuccess = control.ResponseSubtypeSuccess
 	ResponseSubtypeError   = control.ResponseSubtypeError
 )
+
+// =============================================================================
+// Introspection Types
+// =============================================================================
+
+// SlashCommand represents a supported slash command in the CLI.
+type SlashCommand struct {
+	// Name is the command name (without leading slash).
+	Name string `json:"name"`
+	// Description is a human-readable description of the command.
+	Description string `json:"description"`
+	// ArgumentHint describes the expected arguments.
+	ArgumentHint string `json:"argumentHint"`
+}
+
+// ModelInfo describes an available AI model.
+type ModelInfo struct {
+	// Value is the model identifier used in API calls.
+	Value string `json:"value"`
+	// DisplayName is a human-readable model name.
+	DisplayName string `json:"displayName"`
+	// Description is a human-readable description of the model.
+	Description string `json:"description"`
+	// SupportsEffort indicates whether the model supports effort levels.
+	SupportsEffort *bool `json:"supportsEffort,omitempty"`
+	// SupportedEffortLevels lists the available effort levels for this model.
+	SupportedEffortLevels []string `json:"supportedEffortLevels,omitempty"`
+	// SupportsAdaptiveThinking indicates whether the model supports adaptive thinking.
+	SupportsAdaptiveThinking *bool `json:"supportsAdaptiveThinking,omitempty"`
+}
+
+// AgentInfo describes an available agent.
+type AgentInfo struct {
+	// Name is the agent identifier.
+	Name string `json:"name"`
+	// Description is a human-readable description of the agent.
+	Description string `json:"description"`
+	// Model is the optional model used by this agent.
+	Model *string `json:"model,omitempty"`
+}
+
+// AccountInfo contains information about the authenticated account.
+type AccountInfo struct {
+	// Email is the account email address.
+	Email *string `json:"email,omitempty"`
+	// Organization is the organization name.
+	Organization *string `json:"organization,omitempty"`
+	// SubscriptionType indicates the subscription tier.
+	SubscriptionType *string `json:"subscriptionType,omitempty"`
+	// TokenSource describes where the auth token was obtained from.
+	TokenSource *string `json:"tokenSource,omitempty"`
+	// ApiKeySource describes the API key source.
+	ApiKeySource *string `json:"apiKeySource,omitempty"`
+	// ApiProvider indicates the API provider being used.
+	ApiProvider *string `json:"apiProvider,omitempty"`
+}
+
+// =============================================================================
+// Elicitation Types
+// =============================================================================
+
+// ElicitationRequest represents an MCP server requesting user input.
+// This is sent when an MCP server needs information from the user,
+// such as form input or URL-based authentication.
+type ElicitationRequest struct {
+	// ServerName is the name of the MCP server making the request.
+	ServerName string `json:"serverName"`
+	// Message is the prompt message to display to the user.
+	Message string `json:"message"`
+	// Mode is the elicitation mode ("form" or "url").
+	Mode *string `json:"mode,omitempty"`
+	// URL is the URL to present for URL-mode elicitation.
+	URL *string `json:"url,omitempty"`
+	// ElicitationID is the unique identifier for this elicitation request.
+	ElicitationID *string `json:"elicitationId,omitempty"`
+	// RequestedSchema is the JSON schema for form-mode input validation.
+	RequestedSchema map[string]any `json:"requestedSchema,omitempty"`
+}
+
+// ElicitationResult represents the response to an elicitation request.
+type ElicitationResult struct {
+	// Action is the user's response action: "accept", "decline", or "cancel".
+	Action string `json:"action"`
+	// Content contains the form data when Action is "accept".
+	Content map[string]any `json:"content,omitempty"`
+}
+
+// OnElicitation is the callback type for handling elicitation requests.
+// The callback is invoked when an MCP server requests user input.
+// It must be thread-safe as it may be invoked concurrently.
+//
+// Parameters:
+//   - ctx: Context for cancellation and timeouts
+//   - request: The elicitation request with server name, message, and schema
+//
+// Returns:
+//   - *ElicitationResult: The user's response (accept/decline/cancel with optional content)
+//   - error: Non-nil if the callback encounters an error
+type OnElicitation func(ctx context.Context, request ElicitationRequest) (*ElicitationResult, error)

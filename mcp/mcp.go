@@ -34,6 +34,8 @@ type (
 	McpToolDefinition = shared.McpToolDefinition
 	// McpSdkServerConfig configures an in-process SDK MCP server.
 	McpSdkServerConfig = shared.McpSdkServerConfig
+	// ToolAnnotations provides metadata about a tool's behavior.
+	ToolAnnotations = shared.ToolAnnotations
 )
 
 // McpServerTypeSdk represents an in-process SDK MCP server.
