@@ -681,7 +681,7 @@ func WithCanUseTool(callback CanUseToolCallback) Option {
 // HookEvent represents lifecycle events that can trigger hooks.
 type HookEvent = control.HookEvent
 
-// Hook event constants matching Python SDK exactly.
+// Hook event constants.
 const (
 	// HookEventPreToolUse is triggered before a tool is executed.
 	HookEventPreToolUse = control.HookEventPreToolUse
@@ -695,6 +695,46 @@ const (
 	HookEventSubagentStop = control.HookEventSubagentStop
 	// HookEventPreCompact is triggered before context compaction.
 	HookEventPreCompact = control.HookEventPreCompact
+
+	// Python-shared hook events (WI-3)
+
+	// HookEventPostToolUseFailure is triggered after a tool use fails.
+	HookEventPostToolUseFailure = control.HookEventPostToolUseFailure
+	// HookEventNotification is triggered when a notification is emitted.
+	HookEventNotification = control.HookEventNotification
+	// HookEventSubagentStart is triggered when a subagent starts.
+	HookEventSubagentStart = control.HookEventSubagentStart
+	// HookEventPermissionRequest is triggered when a permission request is made.
+	HookEventPermissionRequest = control.HookEventPermissionRequest
+
+	// TS-only hook events (WI-15)
+
+	// HookEventSessionStart is triggered when a session starts.
+	HookEventSessionStart = control.HookEventSessionStart
+	// HookEventSessionEnd is triggered when a session ends.
+	HookEventSessionEnd = control.HookEventSessionEnd
+	// HookEventStopFailure is triggered when a stop attempt fails.
+	HookEventStopFailure = control.HookEventStopFailure
+	// HookEventPostCompact is triggered after context compaction.
+	HookEventPostCompact = control.HookEventPostCompact
+	// HookEventSetup is triggered during setup.
+	HookEventSetup = control.HookEventSetup
+	// HookEventTeammateIdle is triggered when a teammate becomes idle.
+	HookEventTeammateIdle = control.HookEventTeammateIdle
+	// HookEventTaskCompleted is triggered when a task is completed.
+	HookEventTaskCompleted = control.HookEventTaskCompleted
+	// HookEventElicitation is triggered for an elicitation request.
+	HookEventElicitation = control.HookEventElicitation
+	// HookEventElicitationResult is triggered when an elicitation result is received.
+	HookEventElicitationResult = control.HookEventElicitationResult
+	// HookEventConfigChange is triggered when configuration changes.
+	HookEventConfigChange = control.HookEventConfigChange
+	// HookEventWorktreeCreate is triggered when a worktree is created.
+	HookEventWorktreeCreate = control.HookEventWorktreeCreate
+	// HookEventWorktreeRemove is triggered when a worktree is removed.
+	HookEventWorktreeRemove = control.HookEventWorktreeRemove
+	// HookEventInstructionsLoaded is triggered when instructions are loaded.
+	HookEventInstructionsLoaded = control.HookEventInstructionsLoaded
 )
 
 // HookCallback is the function signature for hook callbacks.
@@ -728,9 +768,49 @@ type (
 	SubagentStopHookInput = control.SubagentStopHookInput
 	// PreCompactHookInput is the input for PreCompact hook events.
 	PreCompactHookInput = control.PreCompactHookInput
+
+	// Python-shared hook input types (WI-3)
+
+	// PostToolUseFailureHookInput is the input for PostToolUseFailure hook events.
+	PostToolUseFailureHookInput = control.PostToolUseFailureHookInput
+	// NotificationHookInput is the input for Notification hook events.
+	NotificationHookInput = control.NotificationHookInput
+	// SubagentStartHookInput is the input for SubagentStart hook events.
+	SubagentStartHookInput = control.SubagentStartHookInput
+	// PermissionRequestHookInput is the input for PermissionRequest hook events.
+	PermissionRequestHookInput = control.PermissionRequestHookInput
+
+	// TS-only hook input types (WI-15)
+
+	// SessionStartHookInput is the input for SessionStart hook events.
+	SessionStartHookInput = control.SessionStartHookInput
+	// SessionEndHookInput is the input for SessionEnd hook events.
+	SessionEndHookInput = control.SessionEndHookInput
+	// StopFailureHookInput is the input for StopFailure hook events.
+	StopFailureHookInput = control.StopFailureHookInput
+	// PostCompactHookInput is the input for PostCompact hook events.
+	PostCompactHookInput = control.PostCompactHookInput
+	// SetupHookInput is the input for Setup hook events.
+	SetupHookInput = control.SetupHookInput
+	// TeammateIdleHookInput is the input for TeammateIdle hook events.
+	TeammateIdleHookInput = control.TeammateIdleHookInput
+	// TaskCompletedHookInput is the input for TaskCompleted hook events.
+	TaskCompletedHookInput = control.TaskCompletedHookInput
+	// ElicitationHookInput is the input for Elicitation hook events.
+	ElicitationHookInput = control.ElicitationHookInput
+	// ElicitationResultHookInput is the input for ElicitationResult hook events.
+	ElicitationResultHookInput = control.ElicitationResultHookInput
+	// ConfigChangeHookInput is the input for ConfigChange hook events.
+	ConfigChangeHookInput = control.ConfigChangeHookInput
+	// WorktreeCreateHookInput is the input for WorktreeCreate hook events.
+	WorktreeCreateHookInput = control.WorktreeCreateHookInput
+	// WorktreeRemoveHookInput is the input for WorktreeRemove hook events.
+	WorktreeRemoveHookInput = control.WorktreeRemoveHookInput
+	// InstructionsLoadedHookInput is the input for InstructionsLoaded hook events.
+	InstructionsLoadedHookInput = control.InstructionsLoadedHookInput
 )
 
-// PreToolUseHookSpecificOutput and related types contain hook-specific output fields.
+// Hook-specific output types.
 type (
 	// PreToolUseHookSpecificOutput contains PreToolUse-specific output fields.
 	PreToolUseHookSpecificOutput = control.PreToolUseHookSpecificOutput
@@ -738,6 +818,28 @@ type (
 	PostToolUseHookSpecificOutput = control.PostToolUseHookSpecificOutput
 	// UserPromptSubmitHookSpecificOutput contains UserPromptSubmit-specific output fields.
 	UserPromptSubmitHookSpecificOutput = control.UserPromptSubmitHookSpecificOutput
+
+	// Python-shared hook output types (WI-11)
+
+	// PostToolUseFailureHookSpecificOutput contains PostToolUseFailure-specific output fields.
+	PostToolUseFailureHookSpecificOutput = control.PostToolUseFailureHookSpecificOutput
+	// NotificationHookSpecificOutput contains Notification-specific output fields.
+	NotificationHookSpecificOutput = control.NotificationHookSpecificOutput
+	// SubagentStartHookSpecificOutput contains SubagentStart-specific output fields.
+	SubagentStartHookSpecificOutput = control.SubagentStartHookSpecificOutput
+	// PermissionRequestHookSpecificOutput contains PermissionRequest-specific output fields.
+	PermissionRequestHookSpecificOutput = control.PermissionRequestHookSpecificOutput
+
+	// TS-only hook output types (WI-15)
+
+	// SessionStartHookSpecificOutput contains SessionStart-specific output fields.
+	SessionStartHookSpecificOutput = control.SessionStartHookSpecificOutput
+	// SetupHookSpecificOutput contains Setup-specific output fields.
+	SetupHookSpecificOutput = control.SetupHookSpecificOutput
+	// ElicitationHookSpecificOutput contains Elicitation-specific output fields.
+	ElicitationHookSpecificOutput = control.ElicitationHookSpecificOutput
+	// ElicitationResultHookSpecificOutput contains ElicitationResult-specific output fields.
+	ElicitationResultHookSpecificOutput = control.ElicitationResultHookSpecificOutput
 )
 
 // =============================================================================
@@ -810,7 +912,6 @@ func WithPostToolUseHook(matcher string, callback HookCallback) Option {
 	return WithHook(HookEventPostToolUse, matcher, callback)
 }
 
-// =============================================================================
 // Elicitation Options (WI-14)
 // =============================================================================
 
@@ -912,4 +1013,28 @@ func WithAllowDangerouslySkipPermissions(allow bool) Option {
 	return func(o *Options) {
 		o.AllowDangerouslySkipPermissions = &allow
 	}
+}
+
+// WithPostToolUseFailureHook is a convenience function to add a PostToolUseFailure hook.
+// Pass empty string for matcher to match all tools.
+func WithPostToolUseFailureHook(matcher string, callback HookCallback) Option {
+	return WithHook(HookEventPostToolUseFailure, matcher, callback)
+}
+
+// WithNotificationHook is a convenience function to add a Notification hook.
+// Pass empty string for matcher to match all notifications.
+func WithNotificationHook(matcher string, callback HookCallback) Option {
+	return WithHook(HookEventNotification, matcher, callback)
+}
+
+// WithSubagentStartHook is a convenience function to add a SubagentStart hook.
+// Pass empty string for matcher to match all subagent starts.
+func WithSubagentStartHook(matcher string, callback HookCallback) Option {
+	return WithHook(HookEventSubagentStart, matcher, callback)
+}
+
+// WithPermissionRequestHook is a convenience function to add a PermissionRequest hook.
+// Pass empty string for matcher to match all permission requests.
+func WithPermissionRequestHook(matcher string, callback HookCallback) Option {
+	return WithHook(HookEventPermissionRequest, matcher, callback)
 }

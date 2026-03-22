@@ -69,12 +69,14 @@ func (p *Protocol) handleHookCallbackRequest(ctx context.Context, requestID stri
 // parseHookInput creates the appropriate typed input based on event type.
 // Returns the strongly-typed input struct for the callback.
 func (p *Protocol) parseHookInput(event HookEvent, inputData map[string]any) any {
-	// Parse base fields
+	// Parse base fields (WI-10: includes AgentID and AgentType for subagent context)
 	base := BaseHookInput{
 		SessionID:      getString(inputData, "session_id"),
 		TranscriptPath: getString(inputData, "transcript_path"),
 		Cwd:            getString(inputData, "cwd"),
 		PermissionMode: getString(inputData, "permission_mode"),
+		AgentID:        getStringPtr(inputData, "agent_id"),
+		AgentType:      getStringPtr(inputData, "agent_type"),
 	}
 
 	switch event {
@@ -101,15 +103,20 @@ func (p *Protocol) parseHookInput(event HookEvent, inputData map[string]any) any
 		}
 	case HookEventStop:
 		return &StopHookInput{
-			BaseHookInput:  base,
-			HookEventName:  "Stop",
-			StopHookActive: getBool(inputData, "stop_hook_active"),
+			BaseHookInput:        base,
+			HookEventName:        "Stop",
+			StopHookActive:       getBool(inputData, "stop_hook_active"),
+			LastAssistantMessage: getStringPtr(inputData, "last_assistant_message"),
 		}
 	case HookEventSubagentStop:
 		return &SubagentStopHookInput{
-			BaseHookInput:  base,
-			HookEventName:  "SubagentStop",
-			StopHookActive: getBool(inputData, "stop_hook_active"),
+			BaseHookInput:        base,
+			HookEventName:        "SubagentStop",
+			StopHookActive:       getBool(inputData, "stop_hook_active"),
+			SubagentAgentID:      getString(inputData, "agent_id"),
+			AgentTranscriptPath:  getString(inputData, "agent_transcript_path"),
+			SubagentType:         getString(inputData, "agent_type"),
+			LastAssistantMessage: getStringPtr(inputData, "last_assistant_message"),
 		}
 	case HookEventPreCompact:
 		return &PreCompactHookInput{
@@ -117,6 +124,145 @@ func (p *Protocol) parseHookInput(event HookEvent, inputData map[string]any) any
 			HookEventName:      "PreCompact",
 			Trigger:            getString(inputData, "trigger"),
 			CustomInstructions: getStringPtr(inputData, "custom_instructions"),
+		}
+
+	// Python-shared hook events (WI-3)
+	case HookEventPostToolUseFailure:
+		return &PostToolUseFailureHookInput{
+			BaseHookInput: base,
+			HookEventName: "PostToolUseFailure",
+			ToolName:      getString(inputData, "tool_name"),
+			ToolInput:     getMap(inputData, "tool_input"),
+			ToolUseID:     getString(inputData, "tool_use_id"),
+			Error:         getString(inputData, "error"),
+			IsInterrupt:   getBoolPtr(inputData, "is_interrupt"),
+		}
+	case HookEventNotification:
+		return &NotificationHookInput{
+			BaseHookInput:    base,
+			HookEventName:   "Notification",
+			Message:          getString(inputData, "message"),
+			Title:            getStringPtr(inputData, "title"),
+			NotificationType: getString(inputData, "notification_type"),
+		}
+	case HookEventSubagentStart:
+		return &SubagentStartHookInput{
+			BaseHookInput:   base,
+			HookEventName:   "SubagentStart",
+			SubagentAgentID: getString(inputData, "agent_id"),
+			SubagentType:    getString(inputData, "agent_type"),
+		}
+	case HookEventPermissionRequest:
+		return &PermissionRequestHookInput{
+			BaseHookInput:         base,
+			HookEventName:         "PermissionRequest",
+			ToolName:              getString(inputData, "tool_name"),
+			ToolInput:             inputData["tool_input"],
+			PermissionSuggestions: getSlice(inputData, "permission_suggestions"),
+		}
+
+	// TS-only hook events (WI-15)
+	case HookEventSessionStart:
+		return &SessionStartHookInput{
+			BaseHookInput:  base,
+			HookEventName:  "SessionStart",
+			Source:          getString(inputData, "source"),
+			AgentStartType: getStringPtr(inputData, "agent_start_type"),
+			Model:           getStringPtr(inputData, "model"),
+		}
+	case HookEventSessionEnd:
+		return &SessionEndHookInput{
+			BaseHookInput: base,
+			HookEventName: "SessionEnd",
+			Reason:         getString(inputData, "reason"),
+		}
+	case HookEventStopFailure:
+		return &StopFailureHookInput{
+			BaseHookInput:        base,
+			HookEventName:        "StopFailure",
+			Error:                getString(inputData, "error"),
+			ErrorDetails:         getStringPtr(inputData, "error_details"),
+			LastAssistantMessage: getStringPtr(inputData, "last_assistant_message"),
+		}
+	case HookEventPostCompact:
+		return &PostCompactHookInput{
+			BaseHookInput:  base,
+			HookEventName:  "PostCompact",
+			Trigger:         getString(inputData, "trigger"),
+			CompactSummary:  getString(inputData, "compact_summary"),
+		}
+	case HookEventSetup:
+		return &SetupHookInput{
+			BaseHookInput: base,
+			HookEventName: "Setup",
+			Trigger:        getString(inputData, "trigger"),
+		}
+	case HookEventTeammateIdle:
+		return &TeammateIdleHookInput{
+			BaseHookInput: base,
+			HookEventName: "TeammateIdle",
+			TeammateName:   getString(inputData, "teammate_name"),
+			TeamName:       getString(inputData, "team_name"),
+		}
+	case HookEventTaskCompleted:
+		return &TaskCompletedHookInput{
+			BaseHookInput:   base,
+			HookEventName:   "TaskCompleted",
+			TaskID:           getString(inputData, "task_id"),
+			TaskSubject:     getString(inputData, "task_subject"),
+			TaskDescription: getStringPtr(inputData, "task_description"),
+			TeammateName:    getStringPtr(inputData, "teammate_name"),
+			TeamName:        getStringPtr(inputData, "team_name"),
+		}
+	case HookEventElicitation:
+		return &ElicitationHookInput{
+			BaseHookInput:   base,
+			HookEventName:   "Elicitation",
+			McpServerName:   getString(inputData, "mcp_server_name"),
+			Message:          getString(inputData, "message"),
+			Mode:             getStringPtr(inputData, "mode"),
+			URL:              getStringPtr(inputData, "url"),
+			ElicitationID:   getStringPtr(inputData, "elicitation_id"),
+			RequestedSchema: getMap(inputData, "requested_schema"),
+		}
+	case HookEventElicitationResult:
+		return &ElicitationResultHookInput{
+			BaseHookInput: base,
+			HookEventName: "ElicitationResult",
+			McpServerName: getString(inputData, "mcp_server_name"),
+			ElicitationID: getStringPtr(inputData, "elicitation_id"),
+			Mode:           getStringPtr(inputData, "mode"),
+			Action:         getString(inputData, "action"),
+			Content:        getMap(inputData, "content"),
+		}
+	case HookEventConfigChange:
+		return &ConfigChangeHookInput{
+			BaseHookInput: base,
+			HookEventName: "ConfigChange",
+			Source:          getString(inputData, "source"),
+			FilePath:        getStringPtr(inputData, "file_path"),
+		}
+	case HookEventWorktreeCreate:
+		return &WorktreeCreateHookInput{
+			BaseHookInput: base,
+			HookEventName: "WorktreeCreate",
+			Name:            getString(inputData, "name"),
+		}
+	case HookEventWorktreeRemove:
+		return &WorktreeRemoveHookInput{
+			BaseHookInput: base,
+			HookEventName: "WorktreeRemove",
+			WorktreePath:   getString(inputData, "worktree_path"),
+		}
+	case HookEventInstructionsLoaded:
+		return &InstructionsLoadedHookInput{
+			BaseHookInput: base,
+			HookEventName: "InstructionsLoaded",
+			FilePath:        getString(inputData, "file_path"),
+			FileType:        getString(inputData, "file_type"),
+			Source:          getString(inputData, "source"),
+			Scope:           getStringPtr(inputData, "scope"),
+			Content:         getString(inputData, "content"),
 		}
 	default:
 		// Forward compatibility - return raw input for unknown events
@@ -277,9 +423,23 @@ func getBool(m map[string]any, key string) bool {
 	return false
 }
 
+func getBoolPtr(m map[string]any, key string) *bool {
+	if v, ok := m[key].(bool); ok {
+		return &v
+	}
+	return nil
+}
+
 func getMap(m map[string]any, key string) map[string]any {
 	if v, ok := m[key].(map[string]any); ok {
 		return v
 	}
 	return make(map[string]any)
+}
+
+func getSlice(m map[string]any, key string) []any {
+	if v, ok := m[key].([]any); ok {
+		return v
+	}
+	return nil
 }
