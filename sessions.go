@@ -1131,20 +1131,25 @@ func buildConversationChain(entries []transcriptEntry) []transcriptEntry {
 		entryIndex[uuid] = i
 	}
 
-	// Find parent uuids.
+	// Find parent uuids (only count non-sidechain children as making something a parent).
 	parentUUIDs := make(map[string]bool, len(entries))
 	for _, entry := range entries {
+		isSidechain, _ := entry["isSidechain"].(bool)
+		if isSidechain {
+			continue
+		}
 		parent, _ := entry["parentUuid"].(string)
 		if parent != "" {
 			parentUUIDs[parent] = true
 		}
 	}
 
-	// Find terminal entries (no children).
+	// Find terminal entries (no non-sidechain children).
 	var terminals []transcriptEntry
 	for _, entry := range entries {
 		uuid, _ := entry["uuid"].(string)
-		if !parentUUIDs[uuid] {
+		isSidechain, _ := entry["isSidechain"].(bool)
+		if !parentUUIDs[uuid] && !isSidechain {
 			terminals = append(terminals, entry)
 		}
 	}

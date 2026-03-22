@@ -56,11 +56,12 @@ type McpToolHandler func(ctx context.Context, args map[string]any) (*McpToolResu
 // McpTool represents a tool for SDK MCP servers.
 // This is the Go alternative to Python's @tool decorator.
 //
-// Create tools using NewTool() for proper initialization.
+// Create tools using NewTool() or NewToolWithAnnotations() for proper initialization.
 type McpTool struct {
 	name        string
 	description string
 	inputSchema map[string]any
+	annotations *ToolAnnotations
 	handler     McpToolHandler
 }
 
@@ -99,6 +100,30 @@ func NewTool(name, description string, inputSchema map[string]any, handler McpTo
 	}
 }
 
+// NewToolWithAnnotations creates a new MCP tool definition with annotations.
+// Annotations provide metadata about the tool's behavior (readOnly, destructive, openWorld)
+// that help consumers make informed permission decisions.
+//
+// Example:
+//
+//	readOnly := true
+//	readTool := claudecode.NewToolWithAnnotations(
+//	    "read_file",
+//	    "Read a file from disk",
+//	    schema,
+//	    handler,
+//	    &claudecode.ToolAnnotations{ReadOnly: &readOnly},
+//	)
+func NewToolWithAnnotations(name, description string, inputSchema map[string]any, handler McpToolHandler, annotations *ToolAnnotations) *McpTool {
+	return &McpTool{
+		name:        name,
+		description: description,
+		inputSchema: inputSchema,
+		annotations: annotations,
+		handler:     handler,
+	}
+}
+
 // Name returns the tool's name.
 func (t *McpTool) Name() string {
 	return t.name
@@ -112,6 +137,11 @@ func (t *McpTool) Description() string {
 // InputSchema returns the tool's input JSON schema.
 func (t *McpTool) InputSchema() map[string]any {
 	return t.inputSchema
+}
+
+// Annotations returns the tool's annotations, or nil if none are set.
+func (t *McpTool) Annotations() *ToolAnnotations {
+	return t.annotations
 }
 
 // Call executes the tool handler with the given context and arguments.
@@ -179,11 +209,13 @@ func (s *SdkMcpServer) ListTools(_ context.Context) ([]McpToolDefinition, error)
 
 	defs := make([]McpToolDefinition, 0, len(s.tools))
 	for _, tool := range s.tools {
-		defs = append(defs, McpToolDefinition{
+		def := McpToolDefinition{
 			Name:        tool.Name(),
 			Description: tool.Description(),
 			InputSchema: tool.InputSchema(),
-		})
+			Annotations: tool.Annotations(),
+		}
+		defs = append(defs, def)
 	}
 	return defs, nil
 }

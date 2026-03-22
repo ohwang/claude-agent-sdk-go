@@ -3,6 +3,7 @@ package claudecode
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"io"
 	"os"
 	"testing"
@@ -3615,8 +3616,7 @@ func TestWithSdkMcpServer(t *testing.T) {
 
 // =============================================================================
 // WI-13: Permission Update Destination & Behavior Constants
-// =============================================================================
-
+// ======================================================================
 // TestPermissionUpdateDestinationConstants tests PermissionUpdateDestination values.
 func TestPermissionUpdateDestinationConstants(t *testing.T) {
 	tests := []struct {
@@ -3634,7 +3634,111 @@ func TestPermissionUpdateDestinationConstants(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if string(tt.constant) != tt.expected {
-				t.Errorf("Expected %q, got %q", tt.expected, string(tt.constant))
+				t.Errorf("expected %q, got %q", tt.expected, string(tt.constant))
+			}
+		})
+	}
+}
+
+// =============================================================================
+// WI-1: WithThinking and WithEffort Option Tests
+// =============================================================================
+
+// TestWithThinkingOption tests the WithThinking option constructor
+func TestWithThinkingOption(t *testing.T) {
+	tests := []struct {
+		name    string
+		config  ThinkingConfig
+		checkFn func(*testing.T, *Options)
+	}{
+		{
+			name:   "adaptive",
+			config: ThinkingAdaptive{},
+			checkFn: func(t *testing.T, o *Options) {
+				t.Helper()
+				if o.Thinking == nil {
+					t.Fatal("Expected Thinking to be set")
+				}
+				if _, ok := o.Thinking.(ThinkingAdaptive); !ok {
+					t.Errorf("Expected ThinkingAdaptive, got %T", o.Thinking)
+				}
+			},
+		},
+		{
+			name:   "enabled_no_budget",
+			config: ThinkingEnabled{},
+			checkFn: func(t *testing.T, o *Options) {
+				t.Helper()
+				if o.Thinking == nil {
+					t.Fatal("Expected Thinking to be set")
+				}
+				te, ok := o.Thinking.(ThinkingEnabled)
+				if !ok {
+					t.Fatalf("Expected ThinkingEnabled, got %T", o.Thinking)
+				}
+				if te.BudgetTokens != nil {
+					t.Errorf("Expected nil BudgetTokens, got %v", te.BudgetTokens)
+				}
+			},
+		},
+		{
+			name: "enabled_with_budget",
+			config: func() ThinkingConfig {
+				budget := 10000
+				return ThinkingEnabled{BudgetTokens: &budget}
+			}(),
+			checkFn: func(t *testing.T, o *Options) {
+				t.Helper()
+				te, ok := o.Thinking.(ThinkingEnabled)
+				if !ok {
+					t.Fatalf("Expected ThinkingEnabled, got %T", o.Thinking)
+				}
+				if te.BudgetTokens == nil || *te.BudgetTokens != 10000 {
+					t.Errorf("Expected BudgetTokens = 10000, got %v", te.BudgetTokens)
+				}
+			},
+		},
+		{
+			name:   "disabled",
+			config: ThinkingDisabled{},
+			checkFn: func(t *testing.T, o *Options) {
+				t.Helper()
+				if _, ok := o.Thinking.(ThinkingDisabled); !ok {
+					t.Errorf("Expected ThinkingDisabled, got %T", o.Thinking)
+				}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			opts := NewOptions(WithThinking(tt.config))
+			tt.checkFn(t, opts)
+		})
+	}
+}
+
+// TestWithEffortOption tests the WithEffort option constructor
+func TestWithEffortOption(t *testing.T) {
+	tests := []struct {
+		name     string
+		effort   Effort
+		expected Effort
+	}{
+		{"low", EffortLow, EffortLow},
+		{"medium", EffortMedium, EffortMedium},
+		{"high", EffortHigh, EffortHigh},
+		{"max", EffortMax, EffortMax},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			opts := NewOptions(WithEffort(tt.effort))
+			if opts.Effort == nil {
+				t.Fatal("Expected Effort to be set")
+			}
+			if *opts.Effort != tt.expected {
+				t.Errorf("Expected Effort = %q, got %q", tt.expected, *opts.Effort)
 			}
 		})
 	}
@@ -3672,8 +3776,7 @@ func TestPermissionModeDontAsk(t *testing.T) {
 	assertOptionsPermissionMode(t, options, PermissionModeDontAsk)
 }
 
-// =============================================================================
-// WI-19: Additional Option Constructors
+// ======================================================================// WI-19: Additional Option Constructors
 // =============================================================================
 
 // TestWithMainAgent tests the WithMainAgent option constructor.
@@ -3896,5 +3999,149 @@ func assertOptionsBoolPtr(t *testing.T, actual *bool, expected bool, fieldName s
 	}
 	if *actual != expected {
 		t.Errorf("Expected %s = %v, got %v", fieldName, expected, *actual)
+	}
+}
+
+// TestWithThinkingAndEffortCombined tests combining thinking and effort options
+func TestWithThinkingAndEffortCombined(t *testing.T) {
+	opts := NewOptions(
+		WithThinking(ThinkingAdaptive{}),
+		WithEffort(EffortHigh),
+	)
+
+	if opts.Thinking == nil {
+		t.Fatal("Expected Thinking to be set")
+	}
+	if _, ok := opts.Thinking.(ThinkingAdaptive); !ok {
+		t.Errorf("Expected ThinkingAdaptive, got %T", opts.Thinking)
+	}
+	if opts.Effort == nil || *opts.Effort != EffortHigh {
+		t.Errorf("Expected Effort = high, got %v", opts.Effort)
+	}
+}
+
+// =============================================================================
+// WI-12: WithSystemPromptPreset Option Tests
+// =============================================================================
+
+// TestWithSystemPromptPresetOption tests the WithSystemPromptPreset option constructor
+func TestWithSystemPromptPresetOption(t *testing.T) {
+	t.Run("with_append", func(t *testing.T) {
+		appendText := "Be concise and helpful."
+		opts := NewOptions(WithSystemPromptPreset(&appendText))
+
+		if opts.SystemPrompt == nil {
+			t.Fatal("Expected SystemPrompt to be set")
+		}
+		// The preset should be JSON-serialized into SystemPrompt
+		if *opts.SystemPrompt == "" {
+			t.Error("Expected non-empty SystemPrompt")
+		}
+		// Verify JSON structure
+		var preset map[string]any
+		if err := json.Unmarshal([]byte(*opts.SystemPrompt), &preset); err != nil {
+			t.Fatalf("Expected SystemPrompt to be valid JSON, got error: %v", err)
+		}
+		if preset["type"] != "preset" {
+			t.Errorf("Expected type = preset, got %v", preset["type"])
+		}
+		if preset["preset"] != "claude_code" {
+			t.Errorf("Expected preset = claude_code, got %v", preset["preset"])
+		}
+		if preset["append"] != "Be concise and helpful." {
+			t.Errorf("Expected append = 'Be concise and helpful.', got %v", preset["append"])
+		}
+	})
+
+	t.Run("without_append", func(t *testing.T) {
+		opts := NewOptions(WithSystemPromptPreset(nil))
+
+		if opts.SystemPrompt == nil {
+			t.Fatal("Expected SystemPrompt to be set")
+		}
+		var preset map[string]any
+		if err := json.Unmarshal([]byte(*opts.SystemPrompt), &preset); err != nil {
+			t.Fatalf("Expected valid JSON, got error: %v", err)
+		}
+		if preset["type"] != "preset" {
+			t.Errorf("Expected type = preset, got %v", preset["type"])
+		}
+		if preset["append"] != nil {
+			t.Errorf("Expected append to be absent, got %v", preset["append"])
+		}
+	})
+}
+
+// =============================================================================
+// WI-21: McpClaudeAIProxy Re-export Tests
+// =============================================================================
+
+// TestMcpClaudeAIProxyReExport tests that McpClaudeAIProxy types are properly re-exported
+func TestMcpClaudeAIProxyReExport(t *testing.T) {
+	config := &McpClaudeAIProxyServerConfig{
+		Type: McpServerTypeClaudeAIProxy,
+		URL:  "https://proxy.claude.ai",
+		ID:   "test-id",
+	}
+
+	// Verify interface compliance
+	var _ McpServerConfig = config
+	if config.GetType() != McpServerTypeClaudeAIProxy {
+		t.Errorf("Expected type %s, got %s", McpServerTypeClaudeAIProxy, config.GetType())
+	}
+
+	// Verify constant value
+	if McpServerTypeClaudeAIProxy != "claudeai-proxy" {
+		t.Errorf("Expected constant value 'claudeai-proxy', got %q", McpServerTypeClaudeAIProxy)
+	}
+}
+
+// =============================================================================
+// WI-1: Effort Constants Re-export Tests
+// =============================================================================
+
+// TestEffortConstantsReExport tests effort constants are properly re-exported
+func TestEffortConstantsReExport(t *testing.T) {
+	tests := []struct {
+		constant Effort
+		expected string
+	}{
+		{EffortLow, "low"},
+		{EffortMedium, "medium"},
+		{EffortHigh, "high"},
+		{EffortMax, "max"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.expected, func(t *testing.T) {
+			if string(tt.constant) != tt.expected {
+				t.Errorf("Expected %q, got %q", tt.expected, string(tt.constant))
+			}
+		})
+	}
+}
+
+// =============================================================================
+// WI-18: Sandbox Re-export Tests
+// =============================================================================
+
+// TestSandboxNewTypesReExport tests new sandbox types are properly re-exported
+func TestSandboxNewTypesReExport(t *testing.T) {
+	// SandboxFilesystemConfig
+	fs := &SandboxFilesystemConfig{
+		AllowWrite: []string{"/workspace"},
+		DenyRead:   []string{"/secrets"},
+	}
+	if len(fs.AllowWrite) != 1 {
+		t.Errorf("Expected 1 AllowWrite path, got %d", len(fs.AllowWrite))
+	}
+
+	// SandboxRipgrepConfig
+	rg := &SandboxRipgrepConfig{
+		Command: "rg",
+		Args:    []string{"--max-depth", "3"},
+	}
+	if rg.Command != "rg" {
+		t.Errorf("Expected Command = rg, got %s", rg.Command)
 	}
 }

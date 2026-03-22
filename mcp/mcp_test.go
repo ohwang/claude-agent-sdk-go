@@ -437,3 +437,123 @@ func dummyHandler(_ context.Context, _ map[string]any) (*McpToolResult, error) {
 func formatFloat(f float64) string {
 	return fmt.Sprintf("%.2f", f)
 }
+
+// =============================================================================
+// WI-9: NewToolWithAnnotations Tests
+// =============================================================================
+
+// TestNewToolWithAnnotations tests creating tools with annotations
+func TestNewToolWithAnnotations(t *testing.T) {
+	readOnly := true
+	destructive := false
+	annotations := &ToolAnnotations{
+		ReadOnly:    &readOnly,
+		Destructive: &destructive,
+	}
+
+	tool := NewToolWithAnnotations(
+		"read_file",
+		"Read a file",
+		map[string]any{"type": "object"},
+		dummyHandler,
+		annotations,
+	)
+
+	if tool.Name() != "read_file" {
+		t.Errorf("Name() = %q, want %q", tool.Name(), "read_file")
+	}
+	if tool.Description() != "Read a file" {
+		t.Errorf("Description() = %q, want %q", tool.Description(), "Read a file")
+	}
+	if tool.Annotations() == nil {
+		t.Fatal("Expected non-nil Annotations")
+	}
+	if !*tool.Annotations().ReadOnly {
+		t.Error("Expected ReadOnly = true")
+	}
+	if *tool.Annotations().Destructive {
+		t.Error("Expected Destructive = false")
+	}
+	if tool.Annotations().OpenWorld != nil {
+		t.Error("Expected OpenWorld = nil")
+	}
+}
+
+// TestNewToolWithAnnotationsNil tests creating tools with nil annotations
+func TestNewToolWithAnnotationsNil(t *testing.T) {
+	tool := NewToolWithAnnotations(
+		"test",
+		"Test tool",
+		map[string]any{"type": "object"},
+		dummyHandler,
+		nil,
+	)
+
+	if tool.Annotations() != nil {
+		t.Errorf("Expected nil Annotations, got %v", tool.Annotations())
+	}
+}
+
+// TestNewToolHasNilAnnotations tests that NewTool creates tools without annotations
+func TestNewToolHasNilAnnotations(t *testing.T) {
+	tool := NewTool("test", "Test", map[string]any{}, dummyHandler)
+	if tool.Annotations() != nil {
+		t.Errorf("Expected NewTool to have nil Annotations, got %v", tool.Annotations())
+	}
+}
+
+// TestListToolsIncludesAnnotations tests that ListTools returns annotations
+func TestListToolsIncludesAnnotations(t *testing.T) {
+	readOnly := true
+	annotatedTool := NewToolWithAnnotations(
+		"annotated",
+		"Annotated tool",
+		map[string]any{"type": "object"},
+		dummyHandler,
+		&ToolAnnotations{ReadOnly: &readOnly},
+	)
+
+	plainTool := NewTool("plain", "Plain tool", map[string]any{"type": "object"}, dummyHandler)
+
+	server := CreateSDKMcpServer("test", "1.0.0", annotatedTool, plainTool)
+
+	ctx, cancel := setupMcpTestContext(t, 5*time.Second)
+	defer cancel()
+
+	defs, err := server.Instance.ListTools(ctx)
+	if err != nil {
+		t.Fatalf("ListTools() error: %v", err)
+	}
+
+	if len(defs) != 2 {
+		t.Fatalf("Expected 2 tools, got %d", len(defs))
+	}
+
+	// Find the annotated tool definition
+	var annotatedDef, plainDef *McpToolDefinition
+	for i := range defs {
+		switch defs[i].Name {
+		case "annotated":
+			annotatedDef = &defs[i]
+		case "plain":
+			plainDef = &defs[i]
+		}
+	}
+
+	if annotatedDef == nil {
+		t.Fatal("Expected to find 'annotated' tool")
+	}
+	if annotatedDef.Annotations == nil {
+		t.Fatal("Expected annotated tool to have non-nil Annotations")
+	}
+	if !*annotatedDef.Annotations.ReadOnly {
+		t.Error("Expected annotated tool ReadOnly = true")
+	}
+
+	if plainDef == nil {
+		t.Fatal("Expected to find 'plain' tool")
+	}
+	if plainDef.Annotations != nil {
+		t.Errorf("Expected plain tool to have nil Annotations, got %v", plainDef.Annotations)
+	}
+}

@@ -24,16 +24,6 @@ type McpServerInfo struct {
 	Version string `json:"version"`
 }
 
-// ToolAnnotations provides metadata annotations for an MCP tool.
-type ToolAnnotations struct {
-	// ReadOnly indicates the tool only reads data without modifications.
-	ReadOnly *bool `json:"readOnly,omitempty"`
-	// Destructive indicates the tool may perform destructive operations.
-	Destructive *bool `json:"destructive,omitempty"`
-	// OpenWorld indicates the tool accesses external/open-world resources.
-	OpenWorld *bool `json:"openWorld,omitempty"`
-}
-
 // McpToolInfo describes a tool exposed by an MCP server in status responses.
 type McpToolInfo struct {
 	// Name is the tool's name.

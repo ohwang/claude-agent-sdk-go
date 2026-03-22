@@ -8,8 +8,6 @@ type (
 	McpServerConnectionStatus = shared.McpServerConnectionStatus
 	// McpServerInfo contains basic information about an MCP server.
 	McpServerInfo = shared.McpServerInfo
-	// ToolAnnotations provides metadata annotations for an MCP tool.
-	ToolAnnotations = shared.ToolAnnotations
 	// McpToolInfo describes a tool exposed by an MCP server in status responses.
 	McpToolInfo = shared.McpToolInfo
 	// McpServerStatusEntry represents the status of a single MCP server.

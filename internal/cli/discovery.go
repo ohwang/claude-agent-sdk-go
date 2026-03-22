@@ -213,8 +213,36 @@ func addModelAndPromptFlags(cmd []string, options *shared.Options) []string {
 	// if options.MaxThinkingTokens > 0 {
 	//	cmd = append(cmd, "--max-thinking-tokens", fmt.Sprintf("%d", options.MaxThinkingTokens))
 	// }
+	// Pass --thinking flag when ThinkingConfig is set
+	if options.Thinking != nil {
+		thinkingData, err := serializeThinkingConfig(options.Thinking)
+		if err == nil {
+			cmd = append(cmd, "--thinking", thinkingData)
+		}
+	}
+	// Pass --effort flag when Effort is set
+	if options.Effort != nil {
+		cmd = append(cmd, "--effort", string(*options.Effort))
+	}
 	// NOTE: User and MaxBufferSize are internal SDK options without CLI flag mappings
 	return cmd
+}
+
+// serializeThinkingConfig serializes a ThinkingConfig to its JSON string representation.
+func serializeThinkingConfig(config shared.ThinkingConfig) (string, error) {
+	switch v := config.(type) {
+	case shared.ThinkingAdaptive:
+		return `{"type":"adaptive"}`, nil
+	case shared.ThinkingEnabled:
+		if v.BudgetTokens != nil {
+			return fmt.Sprintf(`{"type":"enabled","budget_tokens":%d}`, *v.BudgetTokens), nil
+		}
+		return `{"type":"enabled"}`, nil
+	case shared.ThinkingDisabled:
+		return `{"type":"disabled"}`, nil
+	default:
+		return "", fmt.Errorf("unknown ThinkingConfig type: %T", config)
+	}
 }
 
 func addPermissionFlags(cmd []string, options *shared.Options) []string {
@@ -293,8 +321,20 @@ func addAgentFlags(cmd []string, options *shared.Options) []string {
 		if len(agent.Tools) > 0 {
 			agentMap["tools"] = agent.Tools
 		}
+		if len(agent.DisallowedTools) > 0 {
+			agentMap["disallowedTools"] = agent.DisallowedTools
+		}
 		if agent.Model != "" {
 			agentMap["model"] = string(agent.Model)
+		}
+		if len(agent.McpServers) > 0 {
+			agentMap["mcpServers"] = agent.McpServers
+		}
+		if len(agent.Skills) > 0 {
+			agentMap["skills"] = agent.Skills
+		}
+		if agent.MaxTurns != nil {
+			agentMap["maxTurns"] = *agent.MaxTurns
 		}
 		agentsMap[name] = agentMap
 	}

@@ -1788,3 +1788,256 @@ func createVersionMockCLI(t *testing.T, version string) string {
 	}
 	return mockCLI
 }
+
+// =============================================================================
+// WI-1: Thinking & Effort CLI Flag Tests
+// =============================================================================
+
+// TestThinkingFlagPassing tests that --thinking flag is added to CLI command
+func TestThinkingFlagPassing(t *testing.T) {
+	tests := []struct {
+		name           string
+		thinking       shared.ThinkingConfig
+		expectedFlag   string
+		expectedAbsent bool
+	}{
+		{
+			name:         "adaptive",
+			thinking:     shared.ThinkingAdaptive{},
+			expectedFlag: `{"type":"adaptive"}`,
+		},
+		{
+			name:         "disabled",
+			thinking:     shared.ThinkingDisabled{},
+			expectedFlag: `{"type":"disabled"}`,
+		},
+		{
+			name:         "enabled_no_budget",
+			thinking:     shared.ThinkingEnabled{},
+			expectedFlag: `{"type":"enabled"}`,
+		},
+		{
+			name: "enabled_with_budget",
+			thinking: func() shared.ThinkingConfig {
+				budget := 8000
+				return shared.ThinkingEnabled{BudgetTokens: &budget}
+			}(),
+			expectedFlag: `{"type":"enabled","budget_tokens":8000}`,
+		},
+		{
+			name:           "nil_thinking",
+			thinking:       nil,
+			expectedAbsent: true,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			options := &shared.Options{Thinking: test.thinking}
+			cmd := BuildCommand("/usr/local/bin/claude", options, false)
+
+			if test.expectedAbsent {
+				assertNotContainsArg(t, cmd, "--thinking")
+			} else {
+				assertContainsArgs(t, cmd, "--thinking", test.expectedFlag)
+			}
+		})
+	}
+}
+
+// TestEffortFlagPassing tests that --effort flag is added to CLI command
+func TestEffortFlagPassing(t *testing.T) {
+	tests := []struct {
+		name     string
+		effort   *shared.Effort
+		expected string
+		absent   bool
+	}{
+		{
+			name:     "low",
+			effort:   effortPtr(shared.EffortLow),
+			expected: "low",
+		},
+		{
+			name:     "medium",
+			effort:   effortPtr(shared.EffortMedium),
+			expected: "medium",
+		},
+		{
+			name:     "high",
+			effort:   effortPtr(shared.EffortHigh),
+			expected: "high",
+		},
+		{
+			name:     "max",
+			effort:   effortPtr(shared.EffortMax),
+			expected: "max",
+		},
+		{
+			name:   "nil_effort",
+			effort: nil,
+			absent: true,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			options := &shared.Options{Effort: test.effort}
+			cmd := BuildCommand("/usr/local/bin/claude", options, false)
+
+			if test.absent {
+				assertNotContainsArg(t, cmd, "--effort")
+			} else {
+				assertContainsArgs(t, cmd, "--effort", test.expected)
+			}
+		})
+	}
+}
+
+// TestSerializeThinkingConfig tests the internal serialization function
+func TestSerializeThinkingConfig(t *testing.T) {
+	budget := 5000
+	tests := []struct {
+		name     string
+		config   shared.ThinkingConfig
+		expected string
+		wantErr  bool
+	}{
+		{"adaptive", shared.ThinkingAdaptive{}, `{"type":"adaptive"}`, false},
+		{"disabled", shared.ThinkingDisabled{}, `{"type":"disabled"}`, false},
+		{"enabled_no_budget", shared.ThinkingEnabled{}, `{"type":"enabled"}`, false},
+		{"enabled_with_budget", shared.ThinkingEnabled{BudgetTokens: &budget}, `{"type":"enabled","budget_tokens":5000}`, false},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			result, err := serializeThinkingConfig(test.config)
+			if test.wantErr {
+				if err == nil {
+					t.Error("Expected error")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("Unexpected error: %v", err)
+			}
+			if result != test.expected {
+				t.Errorf("Expected %q, got %q", test.expected, result)
+			}
+		})
+	}
+}
+
+// =============================================================================
+// WI-7: Agent Flags With New Fields Tests
+// =============================================================================
+
+// TestAgentFlagsWithNewFields tests that new AgentDefinition fields are serialized in CLI flags
+func TestAgentFlagsWithNewFields(t *testing.T) {
+	maxTurns := 10
+	options := &shared.Options{
+		Agents: map[string]shared.AgentDefinition{
+			"coder": {
+				Description:     "A coding agent",
+				Prompt:          "You are a coder",
+				Tools:           []string{"Read", "Write"},
+				DisallowedTools: []string{"Bash"},
+				Model:           shared.AgentModelSonnet,
+				McpServers:      []any{"server1"},
+				Skills:          []string{"coder-skill"},
+				MaxTurns:        &maxTurns,
+			},
+		},
+	}
+
+	cmd := BuildCommand("/usr/local/bin/claude", options, false)
+
+	// Find --agents flag value
+	agentsJSON := ""
+	for i, arg := range cmd {
+		if arg == "--agents" && i+1 < len(cmd) {
+			agentsJSON = cmd[i+1]
+			break
+		}
+	}
+
+	if agentsJSON == "" {
+		t.Fatal("Expected --agents flag in command")
+	}
+
+	var agents map[string]map[string]any
+	if err := json.Unmarshal([]byte(agentsJSON), &agents); err != nil {
+		t.Fatalf("Failed to parse agents JSON: %v", err)
+	}
+
+	coder, ok := agents["coder"]
+	if !ok {
+		t.Fatal("Expected 'coder' agent in JSON")
+	}
+
+	if coder["disallowedTools"] == nil {
+		t.Error("Expected disallowedTools in agent JSON")
+	}
+	if coder["mcpServers"] == nil {
+		t.Error("Expected mcpServers in agent JSON")
+	}
+	if coder["skills"] == nil {
+		t.Error("Expected skills in agent JSON")
+	}
+	if coder["maxTurns"] == nil {
+		t.Error("Expected maxTurns in agent JSON")
+	}
+	// maxTurns should be 10
+	if maxTurnsVal, ok := coder["maxTurns"].(float64); !ok || maxTurnsVal != 10 {
+		t.Errorf("Expected maxTurns = 10, got %v", coder["maxTurns"])
+	}
+}
+
+// TestAgentFlagsOmitsEmptyNewFields tests that empty new fields are omitted
+func TestAgentFlagsOmitsEmptyNewFields(t *testing.T) {
+	options := &shared.Options{
+		Agents: map[string]shared.AgentDefinition{
+			"basic": {
+				Description: "Basic agent",
+				Prompt:      "You are basic",
+			},
+		},
+	}
+
+	cmd := BuildCommand("/usr/local/bin/claude", options, false)
+
+	agentsJSON := ""
+	for i, arg := range cmd {
+		if arg == "--agents" && i+1 < len(cmd) {
+			agentsJSON = cmd[i+1]
+			break
+		}
+	}
+
+	if agentsJSON == "" {
+		t.Fatal("Expected --agents flag in command")
+	}
+
+	var agents map[string]map[string]any
+	if err := json.Unmarshal([]byte(agentsJSON), &agents); err != nil {
+		t.Fatalf("Failed to parse agents JSON: %v", err)
+	}
+
+	basic := agents["basic"]
+	if basic["disallowedTools"] != nil {
+		t.Error("Expected disallowedTools to be omitted")
+	}
+	if basic["mcpServers"] != nil {
+		t.Error("Expected mcpServers to be omitted")
+	}
+	if basic["skills"] != nil {
+		t.Error("Expected skills to be omitted")
+	}
+	if basic["maxTurns"] != nil {
+		t.Error("Expected maxTurns to be omitted")
+	}
+}
+
+func effortPtr(e shared.Effort) *shared.Effort {
+	return &e
+}

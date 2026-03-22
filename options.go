@@ -2,6 +2,7 @@ package claudecode
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"os"
 
@@ -47,6 +48,38 @@ type SandboxNetworkConfig = shared.SandboxNetworkConfig
 
 // SandboxIgnoreViolations specifies patterns to ignore during sandbox violations.
 type SandboxIgnoreViolations = shared.SandboxIgnoreViolations
+
+// SandboxFilesystemConfig configures filesystem access within sandbox.
+type SandboxFilesystemConfig = shared.SandboxFilesystemConfig
+
+// SandboxRipgrepConfig configures the ripgrep binary used within sandbox.
+type SandboxRipgrepConfig = shared.SandboxRipgrepConfig
+
+// ThinkingConfig is the interface for thinking configuration variants.
+// Implementations are ThinkingAdaptive, ThinkingEnabled, and ThinkingDisabled.
+type ThinkingConfig = shared.ThinkingConfig
+
+// ThinkingAdaptive configures adaptive thinking where Claude decides when
+// and how much to think. Recommended for Opus 4.6+.
+type ThinkingAdaptive = shared.ThinkingAdaptive
+
+// ThinkingEnabled configures a fixed thinking token budget.
+type ThinkingEnabled = shared.ThinkingEnabled
+
+// ThinkingDisabled disables extended thinking.
+type ThinkingDisabled = shared.ThinkingDisabled
+
+// Effort controls the reasoning depth for the model.
+type Effort = shared.Effort
+
+// SystemPromptPreset represents a preset system prompt configuration.
+type SystemPromptPreset = shared.SystemPromptPreset
+
+// ToolAnnotations provides metadata about a tool's behavior.
+type ToolAnnotations = shared.ToolAnnotations
+
+// McpClaudeAIProxyServerConfig configures a Claude.ai proxy MCP server.
+type McpClaudeAIProxyServerConfig = shared.McpClaudeAIProxyServerConfig
 
 // SdkPluginType represents the type of SDK plugin.
 type SdkPluginType = shared.SdkPluginType
@@ -108,6 +141,7 @@ const (
 	McpServerTypeStdio              = shared.McpServerTypeStdio
 	McpServerTypeSSE                = shared.McpServerTypeSSE
 	McpServerTypeHTTP               = shared.McpServerTypeHTTP
+	McpServerTypeClaudeAIProxy      = shared.McpServerTypeClaudeAIProxy
 	SdkBetaContext1M                = shared.SdkBetaContext1M
 	SettingSourceUser               = shared.SettingSourceUser
 	SettingSourceProject            = shared.SettingSourceProject
@@ -129,6 +163,14 @@ const (
 	PermissionBehaviorAllow = control.PermissionBehaviorAllow
 	PermissionBehaviorDeny  = control.PermissionBehaviorDeny
 	PermissionBehaviorAsk   = control.PermissionBehaviorAsk
+)
+
+// Effort level constants.
+const (
+	EffortLow    = shared.EffortLow
+	EffortMedium = shared.EffortMedium
+	EffortHigh   = shared.EffortHigh
+	EffortMax    = shared.EffortMax
 )
 
 // Permission update type constants
@@ -230,9 +272,58 @@ func WithMaxBufferSize(size int) Option {
 }
 
 // WithMaxThinkingTokens sets the maximum thinking tokens.
+// Deprecated: Use WithThinking instead for newer models.
 func WithMaxThinkingTokens(tokens int) Option {
 	return func(o *Options) {
 		o.MaxThinkingTokens = tokens
+	}
+}
+
+// WithThinking sets the thinking configuration.
+// Use ThinkingAdaptive{} for models like Opus 4.6+ that support adaptive thinking,
+// ThinkingEnabled{BudgetTokens: &budget} for a fixed budget, or ThinkingDisabled{}.
+//
+// Example:
+//
+//	client := claudecode.NewClient(claudecode.WithThinking(claudecode.ThinkingAdaptive{}))
+func WithThinking(config ThinkingConfig) Option {
+	return func(o *Options) {
+		o.Thinking = config
+	}
+}
+
+// WithEffort sets the reasoning effort level for the model.
+//
+// Example:
+//
+//	client := claudecode.NewClient(claudecode.WithEffort(claudecode.EffortHigh))
+func WithEffort(effort Effort) Option {
+	return func(o *Options) {
+		o.Effort = &effort
+	}
+}
+
+// WithSystemPromptPreset uses the built-in system prompt preset with optional appended text.
+// Pass nil for append to use the preset as-is, or a string pointer to append additional instructions.
+//
+// Example:
+//
+//	appendText := "Also be concise."
+//	client := claudecode.NewClient(claudecode.WithSystemPromptPreset(&appendText))
+func WithSystemPromptPreset(append *string) Option {
+	return func(o *Options) {
+		preset := SystemPromptPreset{
+			Type:   "preset",
+			Preset: "claude_code",
+			Append: append,
+		}
+		// Store the preset as the system prompt via JSON serialization
+		// The CLI accepts either a string or a preset object for --system-prompt
+		data, err := json.Marshal(preset)
+		if err == nil {
+			s := string(data)
+			o.SystemPrompt = &s
+		}
 	}
 }
 

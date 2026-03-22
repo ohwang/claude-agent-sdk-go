@@ -42,6 +42,66 @@ type ToolsPreset struct {
 	Preset string `json:"preset"` // e.g., "claude_code"
 }
 
+// ThinkingConfig is the interface for thinking configuration variants.
+// Implementations are ThinkingAdaptive, ThinkingEnabled, and ThinkingDisabled.
+type ThinkingConfig interface {
+	// thinkingConfig is a marker method to restrict implementations.
+	thinkingConfig()
+}
+
+// ThinkingAdaptive configures adaptive thinking where Claude decides when
+// and how much to think. Recommended for Opus 4.6+.
+type ThinkingAdaptive struct{}
+
+func (ThinkingAdaptive) thinkingConfig() {}
+
+// ThinkingEnabled configures a fixed thinking token budget.
+// Used with older models that require explicit budget allocation.
+type ThinkingEnabled struct {
+	// BudgetTokens is the fixed thinking token budget. If nil, uses default.
+	BudgetTokens *int `json:"budget_tokens,omitempty"`
+}
+
+func (ThinkingEnabled) thinkingConfig() {}
+
+// ThinkingDisabled disables extended thinking entirely.
+type ThinkingDisabled struct{}
+
+func (ThinkingDisabled) thinkingConfig() {}
+
+// Effort controls the reasoning depth for the model.
+type Effort string
+
+const (
+	// EffortLow uses minimal reasoning depth.
+	EffortLow Effort = "low"
+	// EffortMedium uses moderate reasoning depth.
+	EffortMedium Effort = "medium"
+	// EffortHigh uses high reasoning depth.
+	EffortHigh Effort = "high"
+	// EffortMax uses maximum reasoning depth.
+	EffortMax Effort = "max"
+)
+
+// SystemPromptPreset represents a preset system prompt configuration.
+// This allows using the built-in system prompt with optional appended text.
+type SystemPromptPreset struct {
+	Type   string  `json:"type"`             // Always "preset"
+	Preset string  `json:"preset"`           // e.g., "claude_code"
+	Append *string `json:"append,omitempty"` // Optional text to append
+}
+
+// ToolAnnotations provides metadata about a tool's behavior.
+// These annotations help consumers make informed permission decisions.
+type ToolAnnotations struct {
+	// ReadOnly indicates the tool only reads data without side effects.
+	ReadOnly *bool `json:"readOnly,omitempty"`
+	// Destructive indicates the tool may cause irreversible changes.
+	Destructive *bool `json:"destructive,omitempty"`
+	// OpenWorld indicates the tool accesses external resources.
+	OpenWorld *bool `json:"openWorld,omitempty"`
+}
+
 // SettingSource represents a settings source location.
 type SettingSource string
 
@@ -66,6 +126,32 @@ type SandboxNetworkConfig struct {
 	HTTPProxyPort *int `json:"httpProxyPort,omitempty"`
 	// SOCKSProxyPort is the SOCKS5 proxy port if using custom proxy.
 	SOCKSProxyPort *int `json:"socksProxyPort,omitempty"`
+	// AllowedDomains specifies domains accessible from the sandbox.
+	AllowedDomains []string `json:"allowedDomains,omitempty"`
+	// AllowManagedDomainsOnly restricts network access to managed domains only.
+	AllowManagedDomainsOnly *bool `json:"allowManagedDomainsOnly,omitempty"`
+}
+
+// SandboxFilesystemConfig configures filesystem access within sandbox.
+type SandboxFilesystemConfig struct {
+	// AllowWrite specifies paths that are writable in sandbox.
+	AllowWrite []string `json:"allowWrite,omitempty"`
+	// DenyWrite specifies paths that are not writable in sandbox.
+	DenyWrite []string `json:"denyWrite,omitempty"`
+	// DenyRead specifies paths that are not readable in sandbox.
+	DenyRead []string `json:"denyRead,omitempty"`
+	// AllowRead specifies paths that are readable in sandbox.
+	AllowRead []string `json:"allowRead,omitempty"`
+	// AllowManagedReadPathsOnly restricts reads to managed paths only.
+	AllowManagedReadPathsOnly *bool `json:"allowManagedReadPathsOnly,omitempty"`
+}
+
+// SandboxRipgrepConfig configures the ripgrep binary used within sandbox.
+type SandboxRipgrepConfig struct {
+	// Command is the ripgrep command to use.
+	Command string `json:"command"`
+	// Args specifies additional arguments for ripgrep.
+	Args []string `json:"args,omitempty"`
 }
 
 // SandboxIgnoreViolations specifies patterns to ignore during sandbox violations.
@@ -92,6 +178,12 @@ type SandboxSettings struct {
 	IgnoreViolations *SandboxIgnoreViolations `json:"ignoreViolations,omitempty"`
 	// EnableWeakerNestedSandbox for unprivileged Docker (Linux only).
 	EnableWeakerNestedSandbox bool `json:"enableWeakerNestedSandbox,omitempty"`
+	// Filesystem configures filesystem access restrictions in sandbox.
+	Filesystem *SandboxFilesystemConfig `json:"filesystem,omitempty"`
+	// Ripgrep configures the ripgrep binary used within sandbox.
+	Ripgrep *SandboxRipgrepConfig `json:"ripgrep,omitempty"`
+	// EnableWeakerNetworkIsolation relaxes network isolation in sandbox.
+	EnableWeakerNetworkIsolation bool `json:"enableWeakerNetworkIsolation,omitempty"`
 }
 
 // SdkPluginType represents the type of SDK plugin.
@@ -142,8 +234,21 @@ type AgentDefinition struct {
 	// Tools is an optional list of tools available to the agent.
 	Tools []string `json:"tools,omitempty"`
 
+	// DisallowedTools is a list of tools the agent is not allowed to use.
+	DisallowedTools []string `json:"disallowedTools,omitempty"`
+
 	// Model specifies which model the agent should use.
 	Model AgentModel `json:"model,omitempty"`
+
+	// McpServers is a list of MCP server references or inline configurations.
+	// Each element is either a string (server name) or a map[string]any (inline config).
+	McpServers []any `json:"mcpServers,omitempty"`
+
+	// Skills is a list of skill identifiers available to the agent.
+	Skills []string `json:"skills,omitempty"`
+
+	// MaxTurns limits the number of conversation turns for this agent.
+	MaxTurns *int `json:"maxTurns,omitempty"`
 }
 
 // Options configures the Claude Agent SDK behavior.
@@ -165,6 +270,14 @@ type Options struct {
 	Model              *string `json:"model,omitempty"`
 	FallbackModel      *string `json:"fallback_model,omitempty"`
 	MaxThinkingTokens  int     `json:"max_thinking_tokens,omitempty"`
+
+	// Thinking configures extended thinking behavior.
+	// Use ThinkingAdaptive, ThinkingEnabled, or ThinkingDisabled.
+	// When set, takes precedence over MaxThinkingTokens (which is deprecated).
+	Thinking ThinkingConfig `json:"thinking,omitempty"`
+
+	// Effort controls the reasoning depth for the model.
+	Effort *Effort `json:"effort,omitempty"`
 
 	// Budget & Billing
 	MaxBudgetUSD *float64 `json:"max_budget_usd,omitempty"`
@@ -337,6 +450,22 @@ func (c *McpHTTPServerConfig) GetType() McpServerType {
 // McpServerTypeSdk represents an in-process SDK MCP server.
 const McpServerTypeSdk McpServerType = "sdk"
 
+// McpServerTypeClaudeAIProxy represents a Claude.ai proxy MCP server.
+const McpServerTypeClaudeAIProxy McpServerType = "claudeai-proxy"
+
+// McpClaudeAIProxyServerConfig configures a Claude.ai proxy MCP server.
+// This server type is used when running within the Claude.ai ecosystem.
+type McpClaudeAIProxyServerConfig struct {
+	Type McpServerType `json:"type"`
+	URL  string        `json:"url"`
+	ID   string        `json:"id"`
+}
+
+// GetType returns the server type for McpClaudeAIProxyServerConfig.
+func (c *McpClaudeAIProxyServerConfig) GetType() McpServerType {
+	return McpServerTypeClaudeAIProxy
+}
+
 // McpServer is the interface for in-process SDK MCP servers.
 // Implementations must be thread-safe as methods may be called concurrently.
 type McpServer interface {
@@ -366,9 +495,10 @@ func (c *McpSdkServerConfig) GetType() McpServerType {
 
 // McpToolDefinition describes a tool exposed by an MCP server.
 type McpToolDefinition struct {
-	Name        string         `json:"name"`
-	Description string         `json:"description"`
-	InputSchema map[string]any `json:"inputSchema"`
+	Name        string           `json:"name"`
+	Description string           `json:"description"`
+	InputSchema map[string]any   `json:"inputSchema"`
+	Annotations *ToolAnnotations `json:"annotations,omitempty"`
 }
 
 // McpToolResult represents the result of a tool call.
