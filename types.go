@@ -142,6 +142,16 @@ type Transport interface {
 	// RewindFiles reverts tracked files to their state at a specific user message.
 	// Requires file checkpointing to be enabled and control protocol initialized.
 	RewindFiles(ctx context.Context, userMessageID string) error
+	// GetMcpStatus returns the status of all configured MCP servers.
+	GetMcpStatus(ctx context.Context) ([]McpServerStatusEntry, error)
+	// ReconnectMcpServer reconnects a disconnected MCP server by name.
+	ReconnectMcpServer(ctx context.Context, serverName string) error
+	// ToggleMcpServer enables or disables an MCP server by name.
+	ToggleMcpServer(ctx context.Context, serverName string, enabled bool) error
+	// SetMcpServers dynamically replaces the set of MCP servers.
+	SetMcpServers(ctx context.Context, servers map[string]any) (map[string]any, error)
+	// StopTask stops a running background task by ID.
+	StopTask(ctx context.Context, taskID string) error
 	Close() error
 	GetValidator() *StreamValidator
 }
@@ -178,6 +188,21 @@ type SetPermissionModeRequest = control.SetPermissionModeRequest
 // SetModelRequest to change AI model via control protocol.
 type SetModelRequest = control.SetModelRequest
 
+// McpStatusRequest to get MCP server status via control protocol.
+type McpStatusRequest = control.McpStatusRequest
+
+// McpReconnectRequest to reconnect an MCP server via control protocol.
+type McpReconnectRequest = control.McpReconnectRequest
+
+// McpToggleRequest to toggle an MCP server via control protocol.
+type McpToggleRequest = control.McpToggleRequest
+
+// McpSetServersRequest to dynamically replace MCP servers via control protocol.
+type McpSetServersRequest = control.McpSetServersRequest
+
+// StopTaskRequest to stop a running task via control protocol.
+type StopTaskRequest = control.StopTaskRequest
+
 // ControlProtocol manages bidirectional control communication with CLI.
 type ControlProtocol = control.Protocol
 
@@ -191,6 +216,11 @@ const (
 	SubtypeSetModel          = control.SubtypeSetModel
 	SubtypeHookCallback      = control.SubtypeHookCallback
 	SubtypeMcpMessage        = control.SubtypeMcpMessage
+	SubtypeMcpStatus         = control.SubtypeMcpStatus
+	SubtypeMcpReconnect      = control.SubtypeMcpReconnect
+	SubtypeMcpToggle         = control.SubtypeMcpToggle
+	SubtypeMcpSetServers     = control.SubtypeMcpSetServers
+	SubtypeStopTask          = control.SubtypeStopTask
 
 	// Control response subtypes
 	ResponseSubtypeSuccess = control.ResponseSubtypeSuccess

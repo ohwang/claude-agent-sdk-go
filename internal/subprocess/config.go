@@ -146,6 +146,215 @@ func (t *Transport) RewindFiles(ctx context.Context, userMessageID string) error
 	return t.protocol.RewindFiles(ctx, userMessageID)
 }
 
+// GetMcpStatus returns the status of all configured MCP servers.
+// This method requires control protocol integration which is only available
+// in streaming mode (when closeStdin is false).
+func (t *Transport) GetMcpStatus(ctx context.Context) ([]shared.McpServerStatusEntry, error) {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+
+	if !t.connected {
+		return nil, fmt.Errorf("transport not connected")
+	}
+
+	// Control protocol integration is only available in streaming mode
+	if t.closeStdin {
+		return nil, fmt.Errorf("GetMcpStatus not available in one-shot mode")
+	}
+
+	// Delegate to control protocol
+	if t.protocol == nil {
+		return nil, fmt.Errorf("control protocol not initialized")
+	}
+
+	result, err := t.protocol.GetMcpStatus(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// Parse the raw response into typed status entries
+	return parseMcpStatusResponse(result)
+}
+
+// parseMcpStatusResponse converts the raw control protocol response to typed entries.
+func parseMcpStatusResponse(result any) ([]shared.McpServerStatusEntry, error) {
+	resultSlice, ok := result.([]any)
+	if !ok {
+		// Try as a map with a "servers" key
+		if resultMap, ok := result.(map[string]any); ok {
+			if servers, ok := resultMap["servers"]; ok {
+				resultSlice, ok = servers.([]any)
+				if !ok {
+					return nil, fmt.Errorf("unexpected mcp_status response format")
+				}
+			}
+		}
+		if resultSlice == nil {
+			return nil, fmt.Errorf("unexpected mcp_status response format")
+		}
+	}
+
+	entries := make([]shared.McpServerStatusEntry, 0, len(resultSlice))
+	for _, item := range resultSlice {
+		entryMap, ok := item.(map[string]any)
+		if !ok {
+			continue
+		}
+
+		entry := shared.McpServerStatusEntry{}
+		if name, ok := entryMap["name"].(string); ok {
+			entry.Name = name
+		}
+		if status, ok := entryMap["status"].(string); ok {
+			entry.Status = shared.McpServerConnectionStatus(status)
+		}
+		if errMsg, ok := entryMap["error"].(string); ok {
+			entry.Error = &errMsg
+		}
+		if scope, ok := entryMap["scope"].(string); ok {
+			entry.Scope = &scope
+		}
+		if config, ok := entryMap["config"].(map[string]any); ok {
+			entry.Config = config
+		}
+		if serverInfo, ok := entryMap["serverInfo"].(map[string]any); ok {
+			si := &shared.McpServerInfo{}
+			if name, ok := serverInfo["name"].(string); ok {
+				si.Name = name
+			}
+			if version, ok := serverInfo["version"].(string); ok {
+				si.Version = version
+			}
+			entry.ServerInfo = si
+		}
+		if tools, ok := entryMap["tools"].([]any); ok {
+			for _, toolItem := range tools {
+				toolMap, ok := toolItem.(map[string]any)
+				if !ok {
+					continue
+				}
+				ti := shared.McpToolInfo{}
+				if name, ok := toolMap["name"].(string); ok {
+					ti.Name = name
+				}
+				if desc, ok := toolMap["description"].(string); ok {
+					ti.Description = &desc
+				}
+				entry.Tools = append(entry.Tools, ti)
+			}
+		}
+
+		entries = append(entries, entry)
+	}
+
+	return entries, nil
+}
+
+// ReconnectMcpServer reconnects a disconnected MCP server by name.
+// This method requires control protocol integration which is only available
+// in streaming mode (when closeStdin is false).
+func (t *Transport) ReconnectMcpServer(ctx context.Context, serverName string) error {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+
+	if !t.connected {
+		return fmt.Errorf("transport not connected")
+	}
+
+	// Control protocol integration is only available in streaming mode
+	if t.closeStdin {
+		return fmt.Errorf("ReconnectMcpServer not available in one-shot mode")
+	}
+
+	// Delegate to control protocol
+	if t.protocol == nil {
+		return fmt.Errorf("control protocol not initialized")
+	}
+
+	return t.protocol.ReconnectMcpServer(ctx, serverName)
+}
+
+// ToggleMcpServer enables or disables an MCP server by name.
+// This method requires control protocol integration which is only available
+// in streaming mode (when closeStdin is false).
+func (t *Transport) ToggleMcpServer(ctx context.Context, serverName string, enabled bool) error {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+
+	if !t.connected {
+		return fmt.Errorf("transport not connected")
+	}
+
+	// Control protocol integration is only available in streaming mode
+	if t.closeStdin {
+		return fmt.Errorf("ToggleMcpServer not available in one-shot mode")
+	}
+
+	// Delegate to control protocol
+	if t.protocol == nil {
+		return fmt.Errorf("control protocol not initialized")
+	}
+
+	return t.protocol.ToggleMcpServer(ctx, serverName, enabled)
+}
+
+// SetMcpServers dynamically replaces the set of MCP servers.
+// This method requires control protocol integration which is only available
+// in streaming mode (when closeStdin is false).
+func (t *Transport) SetMcpServers(ctx context.Context, servers map[string]any) (map[string]any, error) {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+
+	if !t.connected {
+		return nil, fmt.Errorf("transport not connected")
+	}
+
+	// Control protocol integration is only available in streaming mode
+	if t.closeStdin {
+		return nil, fmt.Errorf("SetMcpServers not available in one-shot mode")
+	}
+
+	// Delegate to control protocol
+	if t.protocol == nil {
+		return nil, fmt.Errorf("control protocol not initialized")
+	}
+
+	result, err := t.protocol.SetMcpServers(ctx, servers)
+	if err != nil {
+		return nil, err
+	}
+
+	if resultMap, ok := result.(map[string]any); ok {
+		return resultMap, nil
+	}
+
+	return nil, nil
+}
+
+// StopTask stops a running background task by its ID.
+// This method requires control protocol integration which is only available
+// in streaming mode (when closeStdin is false).
+func (t *Transport) StopTask(ctx context.Context, taskID string) error {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+
+	if !t.connected {
+		return fmt.Errorf("transport not connected")
+	}
+
+	// Control protocol integration is only available in streaming mode
+	if t.closeStdin {
+		return fmt.Errorf("StopTask not available in one-shot mode")
+	}
+
+	// Delegate to control protocol
+	if t.protocol == nil {
+		return fmt.Errorf("control protocol not initialized")
+	}
+
+	return t.protocol.StopTask(ctx, taskID)
+}
+
 // buildProtocolOptions constructs control protocol options from transport configuration.
 // This extracts callback wiring logic from Connect to reduce cyclomatic complexity.
 func (t *Transport) buildProtocolOptions() []control.ProtocolOption {

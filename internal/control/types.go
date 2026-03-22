@@ -34,6 +34,16 @@ const (
 	SubtypeMcpMessage = "mcp_message"
 	// SubtypeRewindFiles requests file rewind to a specific user message state.
 	SubtypeRewindFiles = "rewind_files"
+	// SubtypeMcpStatus requests the status of all configured MCP servers.
+	SubtypeMcpStatus = "mcp_status"
+	// SubtypeMcpReconnect requests reconnection of a disconnected MCP server.
+	SubtypeMcpReconnect = "mcp_reconnect"
+	// SubtypeMcpToggle requests enabling or disabling an MCP server.
+	SubtypeMcpToggle = "mcp_toggle"
+	// SubtypeMcpSetServers dynamically replaces the set of MCP servers.
+	SubtypeMcpSetServers = "mcp_set_servers"
+	// SubtypeStopTask stops a running background task.
+	SubtypeStopTask = "stop_task"
 )
 
 // Response subtype constants for control responses.
@@ -125,6 +135,46 @@ type RewindFilesRequest struct {
 	// UserMessageID is the UUID of the user message to rewind to.
 	// This should be obtained from UserMessage.UUID received during the session.
 	UserMessageID string `json:"user_message_id"`
+}
+
+// McpStatusRequest requests the status of all configured MCP servers.
+type McpStatusRequest struct {
+	// Subtype is always SubtypeMcpStatus.
+	Subtype string `json:"subtype"`
+}
+
+// McpReconnectRequest requests reconnection of a disconnected MCP server.
+type McpReconnectRequest struct {
+	// Subtype is always SubtypeMcpReconnect.
+	Subtype string `json:"subtype"`
+	// ServerName is the name of the MCP server to reconnect.
+	ServerName string `json:"server_name"`
+}
+
+// McpToggleRequest enables or disables an MCP server.
+type McpToggleRequest struct {
+	// Subtype is always SubtypeMcpToggle.
+	Subtype string `json:"subtype"`
+	// ServerName is the name of the MCP server to toggle.
+	ServerName string `json:"server_name"`
+	// Enabled indicates whether the server should be enabled or disabled.
+	Enabled bool `json:"enabled"`
+}
+
+// McpSetServersRequest dynamically replaces the set of MCP servers.
+type McpSetServersRequest struct {
+	// Subtype is always SubtypeMcpSetServers.
+	Subtype string `json:"subtype"`
+	// Servers is the new set of MCP server configurations keyed by name.
+	Servers map[string]any `json:"servers"`
+}
+
+// StopTaskRequest stops a running background task.
+type StopTaskRequest struct {
+	// Subtype is always SubtypeStopTask.
+	Subtype string `json:"subtype"`
+	// TaskID is the identifier of the task to stop.
+	TaskID string `json:"task_id"`
 }
 
 // =============================================================================

@@ -642,3 +642,39 @@ func (i *integrationMockTransport) Close() error {
 
 	return nil
 }
+
+func (i *integrationMockTransport) GetValidator() *claudecode.StreamValidator {
+	return &claudecode.StreamValidator{}
+}
+
+func (i *integrationMockTransport) SetModel(_ context.Context, _ *string) error {
+	return nil
+}
+
+func (i *integrationMockTransport) SetPermissionMode(_ context.Context, _ string) error {
+	return nil
+}
+
+func (i *integrationMockTransport) RewindFiles(_ context.Context, _ string) error {
+	return nil
+}
+
+func (i *integrationMockTransport) GetMcpStatus(_ context.Context) ([]claudecode.McpServerStatusEntry, error) {
+	return nil, nil
+}
+
+func (i *integrationMockTransport) ReconnectMcpServer(_ context.Context, _ string) error {
+	return nil
+}
+
+func (i *integrationMockTransport) ToggleMcpServer(_ context.Context, _ string, _ bool) error {
+	return nil
+}
+
+func (i *integrationMockTransport) SetMcpServers(_ context.Context, _ map[string]any) (map[string]any, error) {
+	return nil, nil
+}
+
+func (i *integrationMockTransport) StopTask(_ context.Context, _ string) error {
+	return nil
+}

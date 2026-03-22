@@ -463,6 +463,51 @@ func (p *Protocol) RewindFiles(ctx context.Context, userMessageID string) error 
 	return err
 }
 
+// GetMcpStatus requests the status of all configured MCP servers.
+// Returns the raw response data for the caller to parse.
+func (p *Protocol) GetMcpStatus(ctx context.Context) (any, error) {
+	return p.SendControlRequest(ctx, McpStatusRequest{
+		Subtype: SubtypeMcpStatus,
+	}, 5*time.Second)
+}
+
+// ReconnectMcpServer requests reconnection of a disconnected MCP server.
+func (p *Protocol) ReconnectMcpServer(ctx context.Context, serverName string) error {
+	_, err := p.SendControlRequest(ctx, McpReconnectRequest{
+		Subtype:    SubtypeMcpReconnect,
+		ServerName: serverName,
+	}, 5*time.Second)
+	return err
+}
+
+// ToggleMcpServer enables or disables an MCP server.
+func (p *Protocol) ToggleMcpServer(ctx context.Context, serverName string, enabled bool) error {
+	_, err := p.SendControlRequest(ctx, McpToggleRequest{
+		Subtype:    SubtypeMcpToggle,
+		ServerName: serverName,
+		Enabled:    enabled,
+	}, 5*time.Second)
+	return err
+}
+
+// SetMcpServers dynamically replaces the set of MCP servers.
+// Returns the raw response data for the caller to parse.
+func (p *Protocol) SetMcpServers(ctx context.Context, servers map[string]any) (any, error) {
+	return p.SendControlRequest(ctx, McpSetServersRequest{
+		Subtype: SubtypeMcpSetServers,
+		Servers: servers,
+	}, 10*time.Second)
+}
+
+// StopTask stops a running background task.
+func (p *Protocol) StopTask(ctx context.Context, taskID string) error {
+	_, err := p.SendControlRequest(ctx, StopTaskRequest{
+		Subtype: SubtypeStopTask,
+		TaskID:  taskID,
+	}, 5*time.Second)
+	return err
+}
+
 // ReceiveMessages returns a channel for receiving regular (non-control) messages.
 func (p *Protocol) ReceiveMessages() <-chan map[string]any {
 	return p.messageStream

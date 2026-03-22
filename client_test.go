@@ -1029,6 +1029,15 @@ type clientMockTransport struct {
 	setModelError          error
 	setPermissionModeError error
 	rewindFilesError       error
+
+	// MCP and task management error injection
+	getMcpStatusError        error
+	reconnectMcpServerError  error
+	toggleMcpServerError     error
+	setMcpServersError       error
+	stopTaskError            error
+	mcpStatusResult          []McpServerStatusEntry
+	setMcpServersResult      map[string]any
 }
 
 func (c *clientMockTransport) Connect(ctx context.Context) error {
@@ -1210,6 +1219,51 @@ func (c *clientMockTransport) RewindFiles(_ context.Context, _ string) error {
 	defer c.mu.Unlock()
 	if c.rewindFilesError != nil {
 		return c.rewindFilesError
+	}
+	return nil
+}
+
+func (c *clientMockTransport) GetMcpStatus(_ context.Context) ([]McpServerStatusEntry, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.getMcpStatusError != nil {
+		return nil, c.getMcpStatusError
+	}
+	return c.mcpStatusResult, nil
+}
+
+func (c *clientMockTransport) ReconnectMcpServer(_ context.Context, _ string) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.reconnectMcpServerError != nil {
+		return c.reconnectMcpServerError
+	}
+	return nil
+}
+
+func (c *clientMockTransport) ToggleMcpServer(_ context.Context, _ string, _ bool) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.toggleMcpServerError != nil {
+		return c.toggleMcpServerError
+	}
+	return nil
+}
+
+func (c *clientMockTransport) SetMcpServers(_ context.Context, _ map[string]any) (map[string]any, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.setMcpServersError != nil {
+		return nil, c.setMcpServersError
+	}
+	return c.setMcpServersResult, nil
+}
+
+func (c *clientMockTransport) StopTask(_ context.Context, _ string) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.stopTaskError != nil {
+		return c.stopTaskError
 	}
 	return nil
 }

@@ -36,6 +36,33 @@ type Client interface {
 	// Requires WithFileCheckpointing() or WithEnableFileCheckpointing(true) option.
 	// Only works in streaming mode (after Connect()).
 	RewindFiles(ctx context.Context, messageUUID string) error
+	// GetMcpStatus returns the status of all configured MCP servers.
+	// Only works in streaming mode (after Connect()).
+	GetMcpStatus(ctx context.Context) ([]McpServerStatusEntry, error)
+	// ReconnectMcpServer reconnects a disconnected MCP server by name.
+	// Only works in streaming mode (after Connect()).
+	ReconnectMcpServer(ctx context.Context, serverName string) error
+	// ToggleMcpServer enables or disables an MCP server by name.
+	// Only works in streaming mode (after Connect()).
+	ToggleMcpServer(ctx context.Context, serverName string, enabled bool) error
+	// SetMcpServers dynamically replaces the set of MCP servers.
+	// Only works in streaming mode (after Connect()).
+	SetMcpServers(ctx context.Context, servers map[string]McpServerConfig) (*McpSetServersResult, error)
+	// StopTask stops a running background task by its ID.
+	// Only works in streaming mode (after Connect()).
+	StopTask(ctx context.Context, taskID string) error
+	// SupportedCommands returns the list of supported slash commands.
+	// Returns data from the initialization response.
+	SupportedCommands(ctx context.Context) ([]SlashCommand, error)
+	// SupportedModels returns the list of available AI models.
+	// Returns data from the initialization response.
+	SupportedModels(ctx context.Context) ([]ModelInfo, error)
+	// SupportedAgents returns the list of available agents.
+	// Returns data from the initialization response.
+	SupportedAgents(ctx context.Context) ([]AgentInfo, error)
+	// GetAccountInfo returns information about the authenticated account.
+	// Returns data from the initialization response.
+	GetAccountInfo(ctx context.Context) (*AccountInfo, error)
 	GetStreamIssues() []StreamIssue
 	GetStreamStats() StreamStats
 	GetServerInfo(ctx context.Context) (map[string]interface{}, error)
@@ -532,6 +559,168 @@ func (c *ClientImpl) RewindFiles(ctx context.Context, messageUUID string) error 
 	}
 
 	return transport.RewindFiles(ctx, messageUUID)
+}
+
+// GetMcpStatus returns the status of all configured MCP servers.
+// Returns error if not connected or if the control request fails.
+func (c *ClientImpl) GetMcpStatus(ctx context.Context) ([]McpServerStatusEntry, error) {
+	// Check context before proceeding (Go idiom: fail fast)
+	if ctx.Err() != nil {
+		return nil, ctx.Err()
+	}
+
+	// Check connection status with read lock (minimize lock duration)
+	c.mu.RLock()
+	connected := c.connected
+	transport := c.transport
+	c.mu.RUnlock()
+
+	if !connected || transport == nil {
+		return nil, fmt.Errorf("client not connected")
+	}
+
+	return transport.GetMcpStatus(ctx)
+}
+
+// ReconnectMcpServer reconnects a disconnected MCP server by name.
+// Returns error if not connected or if the control request fails.
+func (c *ClientImpl) ReconnectMcpServer(ctx context.Context, serverName string) error {
+	// Check context before proceeding (Go idiom: fail fast)
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+
+	// Check connection status with read lock (minimize lock duration)
+	c.mu.RLock()
+	connected := c.connected
+	transport := c.transport
+	c.mu.RUnlock()
+
+	if !connected || transport == nil {
+		return fmt.Errorf("client not connected")
+	}
+
+	return transport.ReconnectMcpServer(ctx, serverName)
+}
+
+// ToggleMcpServer enables or disables an MCP server by name.
+// Returns error if not connected or if the control request fails.
+func (c *ClientImpl) ToggleMcpServer(ctx context.Context, serverName string, enabled bool) error {
+	// Check context before proceeding (Go idiom: fail fast)
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+
+	// Check connection status with read lock (minimize lock duration)
+	c.mu.RLock()
+	connected := c.connected
+	transport := c.transport
+	c.mu.RUnlock()
+
+	if !connected || transport == nil {
+		return fmt.Errorf("client not connected")
+	}
+
+	return transport.ToggleMcpServer(ctx, serverName, enabled)
+}
+
+// SetMcpServers dynamically replaces the set of MCP servers.
+// Returns the result indicating which servers were added and removed.
+// Returns error if not connected or if the control request fails.
+func (c *ClientImpl) SetMcpServers(ctx context.Context, servers map[string]McpServerConfig) (*McpSetServersResult, error) {
+	// Check context before proceeding (Go idiom: fail fast)
+	if ctx.Err() != nil {
+		return nil, ctx.Err()
+	}
+
+	// Check connection status with read lock (minimize lock duration)
+	c.mu.RLock()
+	connected := c.connected
+	transport := c.transport
+	c.mu.RUnlock()
+
+	if !connected || transport == nil {
+		return nil, fmt.Errorf("client not connected")
+	}
+
+	// Convert McpServerConfig map to map[string]any for transport
+	serversAny := make(map[string]any, len(servers))
+	for name, config := range servers {
+		serversAny[name] = config
+	}
+
+	resultMap, err := transport.SetMcpServers(ctx, serversAny)
+	if err != nil {
+		return nil, err
+	}
+
+	// Parse result map into McpSetServersResult
+	result := &McpSetServersResult{}
+	if added, ok := resultMap["added"]; ok {
+		if addedSlice, ok := added.([]any); ok {
+			for _, v := range addedSlice {
+				if s, ok := v.(string); ok {
+					result.Added = append(result.Added, s)
+				}
+			}
+		}
+	}
+	if removed, ok := resultMap["removed"]; ok {
+		if removedSlice, ok := removed.([]any); ok {
+			for _, v := range removedSlice {
+				if s, ok := v.(string); ok {
+					result.Removed = append(result.Removed, s)
+				}
+			}
+		}
+	}
+
+	return result, nil
+}
+
+// StopTask stops a running background task by its ID.
+// Returns error if not connected or if the control request fails.
+func (c *ClientImpl) StopTask(ctx context.Context, taskID string) error {
+	// Check context before proceeding (Go idiom: fail fast)
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+
+	// Check connection status with read lock (minimize lock duration)
+	c.mu.RLock()
+	connected := c.connected
+	transport := c.transport
+	c.mu.RUnlock()
+
+	if !connected || transport == nil {
+		return fmt.Errorf("client not connected")
+	}
+
+	return transport.StopTask(ctx, taskID)
+}
+
+// SupportedCommands returns the list of supported slash commands.
+// This data comes from the initialization response and is not yet implemented.
+func (c *ClientImpl) SupportedCommands(_ context.Context) ([]SlashCommand, error) {
+	return nil, fmt.Errorf("not yet implemented")
+}
+
+// SupportedModels returns the list of available AI models.
+// This data comes from the initialization response and is not yet implemented.
+func (c *ClientImpl) SupportedModels(_ context.Context) ([]ModelInfo, error) {
+	return nil, fmt.Errorf("not yet implemented")
+}
+
+// SupportedAgents returns the list of available agents.
+// This data comes from the initialization response and is not yet implemented.
+func (c *ClientImpl) SupportedAgents(_ context.Context) ([]AgentInfo, error) {
+	return nil, fmt.Errorf("not yet implemented")
+}
+
+// GetAccountInfo returns information about the authenticated account.
+// This data comes from the initialization response and is not yet implemented.
+func (c *ClientImpl) GetAccountInfo(_ context.Context) (*AccountInfo, error) {
+	return nil, fmt.Errorf("not yet implemented")
 }
 
 // clientIterator implements MessageIterator for client message reception
