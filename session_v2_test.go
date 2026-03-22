@@ -572,6 +572,26 @@ func (t *sessionMockTransport) RewindFiles(_ context.Context, _ string) error {
 	return nil
 }
 
+func (t *sessionMockTransport) GetMcpStatus(_ context.Context) ([]McpServerStatusEntry, error) {
+	return nil, nil
+}
+
+func (t *sessionMockTransport) ReconnectMcpServer(_ context.Context, _ string) error {
+	return nil
+}
+
+func (t *sessionMockTransport) ToggleMcpServer(_ context.Context, _ string, _ bool) error {
+	return nil
+}
+
+func (t *sessionMockTransport) SetMcpServers(_ context.Context, _ map[string]any) (map[string]any, error) {
+	return nil, nil
+}
+
+func (t *sessionMockTransport) StopTask(_ context.Context, _ string) error {
+	return nil
+}
+
 func (t *sessionMockTransport) Close() error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
