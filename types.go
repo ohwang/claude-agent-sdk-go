@@ -40,6 +40,51 @@ type ToolUseBlock = shared.ToolUseBlock
 // ToolResultBlock represents a tool result content block.
 type ToolResultBlock = shared.ToolResultBlock
 
+// RateLimitStatus represents the status of a rate limit check.
+type RateLimitStatus = shared.RateLimitStatus
+
+// RateLimitType represents the type of rate limit being applied.
+type RateLimitType = shared.RateLimitType
+
+// RateLimitInfo contains detailed rate limit status information.
+type RateLimitInfo = shared.RateLimitInfo
+
+// RateLimitEvent represents a rate limit status event from the CLI.
+type RateLimitEvent = shared.RateLimitEvent
+
+// TaskNotificationStatus represents the status of a completed task.
+type TaskNotificationStatus = shared.TaskNotificationStatus
+
+// TaskUsage contains resource usage information for a task.
+type TaskUsage = shared.TaskUsage
+
+// TaskStartedMessage represents a task_started system message.
+type TaskStartedMessage = shared.TaskStartedMessage
+
+// TaskProgressMessage represents a task_progress system message.
+type TaskProgressMessage = shared.TaskProgressMessage
+
+// TaskNotificationMessage represents a task_notification system message.
+type TaskNotificationMessage = shared.TaskNotificationMessage
+
+// StatusMessage represents a status system message.
+type StatusMessage = shared.StatusMessage
+
+// APIRetryMessage represents an api_retry system message.
+type APIRetryMessage = shared.APIRetryMessage
+
+// ToolProgressMessage represents a tool progress event.
+type ToolProgressMessage = shared.ToolProgressMessage
+
+// ToolUseSummaryMessage represents a tool use summary event.
+type ToolUseSummaryMessage = shared.ToolUseSummaryMessage
+
+// AuthStatusMessage represents an authentication status event.
+type AuthStatusMessage = shared.AuthStatusMessage
+
+// PromptSuggestionMessage represents a prompt suggestion event.
+type PromptSuggestionMessage = shared.PromptSuggestionMessage
+
 // StreamMessage represents a message in the streaming protocol.
 type StreamMessage = shared.StreamMessage
 
@@ -68,6 +113,13 @@ const (
 
 	// Partial message streaming type
 	MessageTypeStreamEvent = shared.MessageTypeStreamEvent
+
+	// Additional message types
+	MessageTypeRateLimitEvent   = shared.MessageTypeRateLimitEvent
+	MessageTypeToolProgress     = shared.MessageTypeToolProgress
+	MessageTypeToolUseSummary   = shared.MessageTypeToolUseSummary
+	MessageTypeAuthStatus       = shared.MessageTypeAuthStatus
+	MessageTypePromptSuggestion = shared.MessageTypePromptSuggestion
 )
 
 // Re-export content block type constants
@@ -90,12 +142,36 @@ const (
 
 // Re-export AssistantMessageError constants
 const (
-	AssistantMessageErrorAuthFailed     = shared.AssistantMessageErrorAuthFailed
-	AssistantMessageErrorBilling        = shared.AssistantMessageErrorBilling
-	AssistantMessageErrorRateLimit      = shared.AssistantMessageErrorRateLimit
-	AssistantMessageErrorInvalidRequest = shared.AssistantMessageErrorInvalidRequest
-	AssistantMessageErrorServer         = shared.AssistantMessageErrorServer
-	AssistantMessageErrorUnknown        = shared.AssistantMessageErrorUnknown
+	AssistantMessageErrorAuthFailed      = shared.AssistantMessageErrorAuthFailed
+	AssistantMessageErrorBilling         = shared.AssistantMessageErrorBilling
+	AssistantMessageErrorRateLimit       = shared.AssistantMessageErrorRateLimit
+	AssistantMessageErrorInvalidRequest  = shared.AssistantMessageErrorInvalidRequest
+	AssistantMessageErrorServer          = shared.AssistantMessageErrorServer
+	AssistantMessageErrorUnknown         = shared.AssistantMessageErrorUnknown
+	AssistantMessageErrorMaxOutputTokens = shared.AssistantMessageErrorMaxOutputTokens
+)
+
+// Re-export RateLimitStatus constants
+const (
+	RateLimitStatusAllowed        = shared.RateLimitStatusAllowed
+	RateLimitStatusAllowedWarning = shared.RateLimitStatusAllowedWarning
+	RateLimitStatusRejected       = shared.RateLimitStatusRejected
+)
+
+// Re-export RateLimitType constants
+const (
+	RateLimitTypeFiveHour       = shared.RateLimitTypeFiveHour
+	RateLimitTypeSevenDay       = shared.RateLimitTypeSevenDay
+	RateLimitTypeSevenDayOpus   = shared.RateLimitTypeSevenDayOpus
+	RateLimitTypeSevenDaySonnet = shared.RateLimitTypeSevenDaySonnet
+	RateLimitTypeOverage        = shared.RateLimitTypeOverage
+)
+
+// Re-export TaskNotificationStatus constants
+const (
+	TaskStatusCompleted = shared.TaskStatusCompleted
+	TaskStatusFailed    = shared.TaskStatusFailed
+	TaskStatusStopped   = shared.TaskStatusStopped
 )
 
 // AgentModel represents the model to use for an agent.

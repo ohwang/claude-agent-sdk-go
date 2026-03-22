@@ -17,6 +17,13 @@ const (
 
 	// Partial message streaming type
 	MessageTypeStreamEvent = "stream_event"
+
+	// Additional message types
+	MessageTypeRateLimitEvent  = "rate_limit_event"
+	MessageTypeToolProgress    = "tool_progress"
+	MessageTypeToolUseSummary  = "tool_use_summary"
+	MessageTypeAuthStatus      = "auth_status"
+	MessageTypePromptSuggestion = "prompt_suggestion"
 )
 
 // Content block type constants
@@ -36,8 +43,9 @@ const (
 	AssistantMessageErrorBilling        AssistantMessageError = "billing_error"
 	AssistantMessageErrorRateLimit      AssistantMessageError = "rate_limit"
 	AssistantMessageErrorInvalidRequest AssistantMessageError = "invalid_request"
-	AssistantMessageErrorServer         AssistantMessageError = "server_error"
-	AssistantMessageErrorUnknown        AssistantMessageError = "unknown"
+	AssistantMessageErrorServer          AssistantMessageError = "server_error"
+	AssistantMessageErrorUnknown         AssistantMessageError = "unknown"
+	AssistantMessageErrorMaxOutputTokens AssistantMessageError = "max_output_tokens"
 )
 
 // Message represents any message type in the Claude Code protocol.
@@ -172,17 +180,21 @@ func (m *SystemMessage) MarshalJSON() ([]byte, error) {
 
 // ResultMessage represents the final result of a conversation turn.
 type ResultMessage struct {
-	MessageType      string          `json:"type"`
-	Subtype          string          `json:"subtype"`
-	DurationMs       int             `json:"duration_ms"`
-	DurationAPIMs    int             `json:"duration_api_ms"`
-	IsError          bool            `json:"is_error"`
-	NumTurns         int             `json:"num_turns"`
-	SessionID        string          `json:"session_id"`
-	TotalCostUSD     *float64        `json:"total_cost_usd,omitempty"`
-	Usage            *map[string]any `json:"usage,omitempty"`
-	Result           *string         `json:"result,omitempty"`
-	StructuredOutput any             `json:"structured_output,omitempty"`
+	MessageType       string              `json:"type"`
+	Subtype           string              `json:"subtype"`
+	DurationMs        int                 `json:"duration_ms"`
+	DurationAPIMs     int                 `json:"duration_api_ms"`
+	IsError           bool                `json:"is_error"`
+	NumTurns          int                 `json:"num_turns"`
+	SessionID         string              `json:"session_id"`
+	TotalCostUSD      *float64            `json:"total_cost_usd,omitempty"`
+	Usage             *map[string]any     `json:"usage,omitempty"`
+	Result            *string             `json:"result,omitempty"`
+	StructuredOutput  any                 `json:"structured_output,omitempty"`
+	StopReason        *string             `json:"stop_reason,omitempty"`
+	ModelUsage        map[string]any      `json:"model_usage,omitempty"`
+	PermissionDenials []map[string]any    `json:"permission_denials,omitempty"`
+	Errors            []string            `json:"errors,omitempty"`
 }
 
 // Type returns the message type for ResultMessage.
@@ -306,3 +318,202 @@ type StreamEvent struct {
 func (m *StreamEvent) Type() string {
 	return MessageTypeStreamEvent
 }
+
+// --- WI-6: Rate Limit Event ---
+
+// RateLimitStatus represents the status of a rate limit check.
+type RateLimitStatus string
+
+// RateLimitStatus constants.
+const (
+	RateLimitStatusAllowed        RateLimitStatus = "allowed"
+	RateLimitStatusAllowedWarning RateLimitStatus = "allowed_warning"
+	RateLimitStatusRejected       RateLimitStatus = "rejected"
+)
+
+// RateLimitType represents the type of rate limit being applied.
+type RateLimitType string
+
+// RateLimitType constants.
+const (
+	RateLimitTypeFiveHour       RateLimitType = "five_hour"
+	RateLimitTypeSevenDay       RateLimitType = "seven_day"
+	RateLimitTypeSevenDayOpus   RateLimitType = "seven_day_opus"
+	RateLimitTypeSevenDaySonnet RateLimitType = "seven_day_sonnet"
+	RateLimitTypeOverage        RateLimitType = "overage"
+)
+
+// RateLimitInfo contains detailed rate limit status information.
+type RateLimitInfo struct {
+	Status                RateLimitStatus  `json:"status"`
+	ResetsAt              *int64           `json:"resetsAt,omitempty"`
+	RateLimitType         *RateLimitType   `json:"rateLimitType,omitempty"`
+	Utilization           *float64         `json:"utilization,omitempty"`
+	OverageStatus         *RateLimitStatus `json:"overageStatus,omitempty"`
+	OverageResetsAt       *int64           `json:"overageResetsAt,omitempty"`
+	OverageDisabledReason *string          `json:"overageDisabledReason,omitempty"`
+	IsUsingOverage        *bool            `json:"isUsingOverage,omitempty"`
+	SurpassedThreshold    *float64         `json:"surpassedThreshold,omitempty"`
+}
+
+// RateLimitEvent represents a rate limit status event from the CLI.
+type RateLimitEvent struct {
+	MessageType   string        `json:"type"`
+	RateLimitInfo RateLimitInfo `json:"rate_limit_info"`
+	UUID          string        `json:"uuid"`
+	SessionID     string        `json:"session_id"`
+}
+
+// Type returns the message type for RateLimitEvent.
+func (r *RateLimitEvent) Type() string { return MessageTypeRateLimitEvent }
+
+// --- WI-5: Task Management Message Types ---
+
+// TaskNotificationStatus represents the status of a completed task.
+type TaskNotificationStatus string
+
+// TaskNotificationStatus constants.
+const (
+	TaskStatusCompleted TaskNotificationStatus = "completed"
+	TaskStatusFailed    TaskNotificationStatus = "failed"
+	TaskStatusStopped   TaskNotificationStatus = "stopped"
+)
+
+// TaskUsage contains resource usage information for a task.
+type TaskUsage struct {
+	TotalTokens int `json:"total_tokens"`
+	ToolUses    int `json:"tool_uses"`
+	DurationMs  int `json:"duration_ms"`
+}
+
+// TaskStartedMessage represents a task_started system message.
+type TaskStartedMessage struct {
+	MessageType string  `json:"type"`
+	Subtype     string  `json:"subtype"` // "task_started"
+	TaskID      string  `json:"task_id"`
+	ToolUseID   *string `json:"tool_use_id,omitempty"`
+	Description string  `json:"description"`
+	TaskType    *string `json:"task_type,omitempty"`
+	Prompt      *string `json:"prompt,omitempty"`
+	UUID        string  `json:"uuid"`
+	SessionID   string  `json:"session_id"`
+}
+
+// Type returns the message type for TaskStartedMessage.
+func (m *TaskStartedMessage) Type() string { return MessageTypeSystem }
+
+// TaskProgressMessage represents a task_progress system message.
+type TaskProgressMessage struct {
+	MessageType  string    `json:"type"`
+	Subtype      string    `json:"subtype"` // "task_progress"
+	TaskID       string    `json:"task_id"`
+	ToolUseID    *string   `json:"tool_use_id,omitempty"`
+	Description  string    `json:"description"`
+	Usage        TaskUsage `json:"usage"`
+	LastToolName *string   `json:"last_tool_name,omitempty"`
+	Summary      *string   `json:"summary,omitempty"`
+	UUID         string    `json:"uuid"`
+	SessionID    string    `json:"session_id"`
+}
+
+// Type returns the message type for TaskProgressMessage.
+func (m *TaskProgressMessage) Type() string { return MessageTypeSystem }
+
+// TaskNotificationMessage represents a task_notification system message.
+type TaskNotificationMessage struct {
+	MessageType string                 `json:"type"`
+	Subtype     string                 `json:"subtype"` // "task_notification"
+	TaskID      string                 `json:"task_id"`
+	ToolUseID   *string                `json:"tool_use_id,omitempty"`
+	Status      TaskNotificationStatus `json:"status"`
+	OutputFile  string                 `json:"output_file"`
+	Summary     string                 `json:"summary"`
+	Usage       *TaskUsage             `json:"usage,omitempty"`
+	UUID        string                 `json:"uuid"`
+	SessionID   string                 `json:"session_id"`
+}
+
+// Type returns the message type for TaskNotificationMessage.
+func (m *TaskNotificationMessage) Type() string { return MessageTypeSystem }
+
+// --- WI-8: Additional Message Types ---
+
+// StatusMessage represents a status system message (e.g., compacting).
+type StatusMessage struct {
+	MessageType    string  `json:"type"`
+	Subtype        string  `json:"subtype"` // "status"
+	Status         *string `json:"status,omitempty"`
+	PermissionMode *string `json:"permissionMode,omitempty"`
+	UUID           string  `json:"uuid"`
+	SessionID      string  `json:"session_id"`
+}
+
+// Type returns the message type for StatusMessage.
+func (m *StatusMessage) Type() string { return MessageTypeSystem }
+
+// APIRetryMessage represents an api_retry system message.
+type APIRetryMessage struct {
+	MessageType  string `json:"type"`
+	Subtype      string `json:"subtype"` // "api_retry"
+	Attempt      int    `json:"attempt"`
+	MaxRetries   int    `json:"max_retries"`
+	RetryDelayMs int    `json:"retry_delay_ms"`
+	ErrorStatus  *int   `json:"error_status,omitempty"`
+	Error        string `json:"error"`
+	UUID         string `json:"uuid"`
+	SessionID    string `json:"session_id"`
+}
+
+// Type returns the message type for APIRetryMessage.
+func (m *APIRetryMessage) Type() string { return MessageTypeSystem }
+
+// ToolProgressMessage represents a tool progress event.
+type ToolProgressMessage struct {
+	MessageType        string  `json:"type"`
+	ToolUseID          string  `json:"tool_use_id"`
+	ToolName           string  `json:"tool_name"`
+	ParentToolUseID    *string `json:"parent_tool_use_id,omitempty"`
+	ElapsedTimeSeconds float64 `json:"elapsed_time_seconds"`
+	TaskID             *string `json:"task_id,omitempty"`
+	UUID               string  `json:"uuid"`
+	SessionID          string  `json:"session_id"`
+}
+
+// Type returns the message type for ToolProgressMessage.
+func (m *ToolProgressMessage) Type() string { return MessageTypeToolProgress }
+
+// ToolUseSummaryMessage represents a tool use summary event.
+type ToolUseSummaryMessage struct {
+	MessageType         string   `json:"type"`
+	Summary             string   `json:"summary"`
+	PrecedingToolUseIDs []string `json:"preceding_tool_use_ids"`
+	UUID                string   `json:"uuid"`
+	SessionID           string   `json:"session_id"`
+}
+
+// Type returns the message type for ToolUseSummaryMessage.
+func (m *ToolUseSummaryMessage) Type() string { return MessageTypeToolUseSummary }
+
+// AuthStatusMessage represents an authentication status event.
+type AuthStatusMessage struct {
+	MessageType      string   `json:"type"`
+	IsAuthenticating bool     `json:"isAuthenticating"`
+	Output           []string `json:"output"`
+	Error            *string  `json:"error,omitempty"`
+	UUID             string   `json:"uuid"`
+	SessionID        string   `json:"session_id"`
+}
+
+// Type returns the message type for AuthStatusMessage.
+func (m *AuthStatusMessage) Type() string { return MessageTypeAuthStatus }
+
+// PromptSuggestionMessage represents a prompt suggestion event.
+type PromptSuggestionMessage struct {
+	MessageType string `json:"type"`
+	Suggestion  string `json:"suggestion"`
+	UUID        string `json:"uuid"`
+	SessionID   string `json:"session_id"`
+}
+
+// Type returns the message type for PromptSuggestionMessage.
+func (m *PromptSuggestionMessage) Type() string { return MessageTypePromptSuggestion }
